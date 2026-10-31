@@ -101,7 +101,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 12mm;
+                margin: 0;
             }
             body * {
                 visibility: hidden !important;
@@ -116,7 +116,9 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
-                padding: 24px !important;
+                padding: 12mm !important;
+                min-height: 297mm !important;
+                box-sizing: border-box !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
                 border: 2px solid #e2e8f0 !important;
@@ -1773,7 +1775,12 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
     return [r.date || '', r.contact || '', r.name || '', r.ispPackage || '', r.gb || '', price, r.configuration || '', r.subLink || '', r.billingId || '', r.adminRemark || r.enteredBy || 'CEO Thenul'];
   });
 
-  if (rows.length > 0) sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
+    // Dedicated Billing ID column (I): preserve IDs as text.
+    sheet.getRange(2, 9, rows.length, 1).setNumberFormat('@');
+  }
+  sheet.setColumnWidth(9, 190);
   const summaryRowIndex = Math.max(rows.length + 4, 21);
   sheet.getRange(summaryRowIndex, 5).setValue('remaining data  ' + totalRemainingGB.toFixed(1) + ' GB').setFontWeight('bold');
   sheet.getRange(summaryRowIndex, 6).setValue('total profit  ' + totalProfit + ' LKR').setBackground('#ff0000').setFontColor('#000000').setFontWeight('bold');
@@ -1980,10 +1987,16 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
         }
 
         function generateNextNewBillingId(dateVal = '') {
-            const cleanDate = String(dateVal || fieldDate?.value || getFormattedLocalDate()).replace(/\D/g, '').slice(0, 6) || '202610';
-            const seq = String(customers.length + 101).padStart(4, '0');
-            const rand = String(Math.floor(10 + Math.random() * 89));
-            return `VX-${cleanDate}-${seq}${rand}`;
+            const cleanDate = String(dateVal || fieldDate?.value || getFormattedLocalDate())
+                .replace(/\D/g, '').slice(0, 6) || '202610';
+            const prefix = `VX-${cleanDate}-`;
+            const usedNumbers = customers
+                .map(c => String(c.billingId || '').trim())
+                .filter(id => id.startsWith(prefix))
+                .map(id => Number(id.slice(prefix.length)))
+                .filter(n => Number.isSafeInteger(n) && n >= 1001);
+            const nextNumber = Math.max(1000, ...usedNumbers) + 1;
+            return `${prefix}${String(nextNumber).padStart(4, '0')}`;
         }
 
         function ensureAllCustomersHaveBillingAndCeo() {
@@ -4548,15 +4561,39 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
                         return `${activeYear}-${String(targetMonthIdx + 1).padStart(2, '0')}-01`;
                     };
 
+                    // Resolve columns by header labels so Billing ID remains in its own column
+                    // even if the Google Sheet columns have been moved/reordered.
+                    const headerRowIndex = parsedRows.findIndex(r =>
+                        Array.isArray(r) && r.some(cell => String(cell || '').trim().toLowerCase() === 'date')
+                    );
+                    const headerRow = headerRowIndex >= 0 ? parsedRows[headerRowIndex] : [];
+                    const headerIndex = (aliases, fallback) => {
+                        const idx = headerRow.findIndex(cell => aliases.includes(String(cell || '').trim().toLowerCase()));
+                        return idx >= 0 ? idx : fallback;
+                    };
+                    const colIndex = {
+                        date: headerIndex(['date'], 0),
+                        contact: headerIndex(['contact', 'phone', 'mobile'], 1),
+                        name: headerIndex(['name', 'customer name'], 2),
+                        package: headerIndex(['isp package name', 'package', 'package name'], 3),
+                        gb: headerIndex(['gb', 'data', 'quota'], 4),
+                        price: headerIndex(['price', 'amount'], 5),
+                        configuration: headerIndex(['configuration', 'config'], 6),
+                        subLink: headerIndex(['subscribtion usage(link)', 'subscription usage(link)', 'subscription link', 'sub link'], 7),
+                        billingId: headerIndex(['billing id', 'billingid', 'bill id'], 8),
+                        enteredBy: headerIndex(['entered by (ceo remark)', 'entered by', 'ceo remark'], 9)
+                    };
+
                     for (let i = 0; i < parsedRows.length; i++) {
+                        if (i === headerRowIndex) continue;
                         const row = parsedRows[i];
-                        const colA = String(row[0] || '').trim();
-                        const colB = String(row[1] || '').trim();
-                        const colC = String(row[2] || '').trim();
-                        const colD = String(row[3] || '').trim();
-                        const colE = String(row[4] || '').trim().toLowerCase();
-                        const colF = String(row[5] || '').trim().toLowerCase();
-                        const colG = String(row[6] || '').trim();
+                        const colA = String(row[colIndex.date] || '').trim();
+                        const colB = String(row[colIndex.contact] || '').trim();
+                        const colC = String(row[colIndex.name] || '').trim();
+                        const colD = String(row[colIndex.package] || '').trim();
+                        const colE = String(row[colIndex.gb] || '').trim().toLowerCase();
+                        const colF = String(row[colIndex.price] || '').trim().toLowerCase();
+                        const colG = String(row[colIndex.configuration] || '').trim();
 
                         // Skip empty rows, header row, or summary footer row
                         if (!colA && !colB && !colC) continue;
@@ -4564,9 +4601,9 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
 
                         const normalizedDate = normalizePulledDate(colA);
                         const pkgVal = colD || 'DIALOG ZOOM 298/724 (ROUTER)';
-                        const gbVal = String(row[4] || '250').trim();
-                        const priceVal = parseFloat(String(row[5] || '250').replace(/[^\d.]/g, '')) || 250;
-                        const subVal = String(row[7] || 'Active').trim();
+                        const gbVal = String(row[colIndex.gb] || '250').trim();
+                        const priceVal = parseFloat(String(row[colIndex.price] || '250').replace(/[^\d.]/g, '')) || 250;
+                        const subVal = String(row[colIndex.subLink] || 'Active').trim();
 
                         const existingMatch = customers.find(c => {
                             const info = getRecordMonthAndYear(c);
@@ -4591,9 +4628,9 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
                             price: priceVal,
                             configuration: colG,
                             subLink: subVal,
-                            billingId: String(row[8] || existingMatch?.billingId || '').trim(),
-                            enteredBy: String(row[9] || existingMatch?.enteredBy || activeCeoAdmin).includes('Shenol') ? 'Shenol' : 'Thenul',
-                            adminRemark: String(row[9] || existingMatch?.adminRemark || `Entered by CEO ${activeCeoAdmin}`).trim(),
+                            billingId: String(row[colIndex.billingId] || existingMatch?.billingId || '').trim(),
+                            enteredBy: String(row[colIndex.enteredBy] || existingMatch?.enteredBy || activeCeoAdmin).includes('Shenol') ? 'Shenol' : 'Thenul',
+                            adminRemark: String(row[colIndex.enteredBy] || existingMatch?.adminRemark || `Entered by CEO ${activeCeoAdmin}`).trim(),
                             usedGb: existingMatch ? (parseFloat(existingMatch.usedGb) || 0) : 0,
                             monthName: targetMonthName,
                             year: activeYear,
