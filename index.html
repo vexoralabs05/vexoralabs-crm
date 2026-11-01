@@ -4581,6 +4581,9 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
                         const idx = headerRow.findIndex(cell => aliases.includes(String(cell || '').trim().toLowerCase()));
                         return idx >= 0 ? idx : fallback;
                     };
+                    const portalIdHeaderIndex = headerIndex(['portal id', 'portalid', 'portal_id', 'portal'], -1);
+                    // If Portal ID exists in column I, never treat that column as Billing ID.
+                    // Keep compatibility with older sheets that have no Portal ID column.
                     const colIndex = {
                         date: headerIndex(['date'], 0),
                         contact: headerIndex(['contact', 'phone', 'mobile'], 1),
@@ -4590,8 +4593,9 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
                         price: headerIndex(['price', 'amount'], 5),
                         configuration: headerIndex(['configuration', 'config'], 6),
                         subLink: headerIndex(['subscribtion usage(link)', 'subscription usage(link)', 'subscription link', 'sub link'], 7),
-                        billingId: headerIndex(['billing id', 'billingid', 'bill id'], 8),
-                        enteredBy: headerIndex(['entered by (ceo remark)', 'entered by', 'ceo remark'], 9)
+                        portalId: portalIdHeaderIndex >= 0 ? portalIdHeaderIndex : -1,
+                        billingId: headerIndex(['billing id', 'billingid', 'bill id'], portalIdHeaderIndex >= 0 ? 9 : 8),
+                        enteredBy: headerIndex(['entered by (ceo remark)', 'entered by', 'ceo remark'], portalIdHeaderIndex >= 0 ? 10 : 9)
                     };
 
                     for (let i = 0; i < parsedRows.length; i++) {
@@ -4638,6 +4642,7 @@ function renderMonthSheetData(sheet, records, allowEmptyOverwrite) {
                             price: priceVal,
                             configuration: colG,
                             subLink: subVal,
+                            portalId: String((colIndex.portalId >= 0 ? row[colIndex.portalId] : '') || existingMatch?.portalId || extractPortalIdFromSubscriptionLink(subVal) || '').trim(),
                             billingId: String(row[colIndex.billingId] || existingMatch?.billingId || '').trim(),
                             enteredBy: String(row[colIndex.enteredBy] || existingMatch?.enteredBy || activeCeoAdmin).includes('Shenol') ? 'Shenol' : 'Thenul',
                             adminRemark: String(row[colIndex.enteredBy] || existingMatch?.adminRemark || `Entered by CEO ${activeCeoAdmin}`).trim(),
