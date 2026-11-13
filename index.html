@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <meta name="description" content="Vexora Labs CRM secure sign-in">
+  <title>Vexora Labs CRM | Sign in</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="brand-panel" aria-label="Vexora Labs">
+      <div class="brand-mark">V</div>
+      <p class="eyebrow">VEXORA LABS</p>
+      <h1>Business operations,<br><span>under control.</span></h1>
+      <p class="brand-copy">A central workspace for customers, sales, subscriptions and business performance.</p>
+      <div class="brand-foot"><span class="status-dot"></span> Secure workspace</div>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <p class="eyebrow">WELCOME BACK</p>
+        <h2>Sign in to CRM</h2>
+        <p class="muted">Use an account invited by your Vexora administrator.</p>
+
+        <button id="googleSignIn" class="google-button" type="button">
+          <span class="google-g" aria-hidden="true">G</span>
+          Continue with Google
+        </button>
+
+        <div class="separator"><span>or use email</span></div>
+
+        <form id="emailForm">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="username" placeholder="name@company.com" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required minlength="6">
+          <button id="emailSignIn" class="primary-button" type="submit">Sign in</button>
+        </form>
+
+        <button id="resetPassword" class="text-button" type="button">Forgot password?</button>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+        <div id="sessionPanel" class="session-panel" hidden>
+          <div class="session-icon">✓</div>
+          <h3>Identity verified</h3>
+          <p id="sessionEmail" class="muted"></p>
+          <p class="notice">Your CRM role is checked by the secure backend. Dashboard access stays locked until that authorization check is connected.</p>
+          <button id="signOut" class="secondary-button" type="button">Sign out</button>
+        </div>
+      </div>
+      <footer>© <span id="year"></span> Vexora Labs. Authorized access only.</footer>
+    </section>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
