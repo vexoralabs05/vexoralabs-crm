@@ -33,12 +33,12 @@ let bridgeWaiters = [];
 const bridgeRequests = new Map();
 let requestCounter = 0;
 
-if (APPS_SCRIPT_URL) bridgeFrame.src = APPS_SCRIPT_URL;
+const bridgeChannel = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "-" + Math.random().toString(36).slice(2));
 window.addEventListener("message", event => {
-  // Apps Script HTML Service can use an opaque sandbox origin ("null").
-  // Validate the exact iframe window instead of relying on event.origin.
-  if (event.source !== bridgeFrame.contentWindow) return;
+  // Apps Script may return messages from an opaque sandbox origin.
+  // A per-page random channel authenticates this bridge session.
   const message = event.data || {};
+  if (!message || message.channel !== bridgeChannel) return;
   if (message.type === "VEXORA_BRIDGE_READY") {
     bridgeReady = true;
     bridgeWaiters.splice(0).forEach(resolve => resolve());
@@ -52,6 +52,10 @@ window.addEventListener("message", event => {
     else pending.reject(new Error(message.error || "Google Apps Script request failed."));
   }
 });
+bridgeFrame.addEventListener("load", () => {
+  bridgeFrame.contentWindow.postMessage({ type: "VEXORA_BRIDGE_INIT", channel: bridgeChannel }, "*");
+});
+if (APPS_SCRIPT_URL) bridgeFrame.src = APPS_SCRIPT_URL;
 function waitForBridge() {
   if (bridgeReady) return Promise.resolve();
   if (!APPS_SCRIPT_URL) return Promise.reject(new Error("Google Apps Script Web App URL is not configured in src/config.js."));
@@ -71,7 +75,7 @@ async function api(action, payload = {}) {
       reject(new Error("Google Apps Script did not respond. Check its deployment and execution permissions."));
     }, 30000);
     bridgeRequests.set(requestId, { resolve, reject, timer });
-    bridgeFrame.contentWindow.postMessage({ type: "VEXORA_BRIDGE_REQUEST", requestId, action, idToken, payload }, "*");
+    bridgeFrame.contentWindow.postMessage({ type: "VEXORA_BRIDGE_REQUEST", channel: bridgeChannel, requestId, action, idToken, payload }, "*");
   });
 }
 function setBusy(busy) {
