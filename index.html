@@ -49,6 +49,9 @@
           <p class="side-label">WORKSPACE</p>
           <nav class="side-nav" aria-label="Dashboard navigation">
             <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
+            <button class="nav-item" data-view="posView" id="posNav"><span>▣</span> New Sale</button>
+            <button class="nav-item" data-view="servicesView" id="servicesNav"><span>◇</span> Services</button>
+            <button class="nav-item" data-view="salesView" id="salesNav"><span>▤</span> Sales & Invoices</button>
             <button class="nav-item" data-view="customersView" id="customersNav"><span>♙</span> Customers</button>
             <button class="nav-item" data-view="teamView" id="teamNav" hidden><span>♧</span> Team access</button>
           </nav>
@@ -76,6 +79,19 @@
               <p id="customerMsg" class="message" role="status"></p><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Company</th><th>Actions</th></tr></thead><tbody id="customers"></tbody></table></div>
             </section>
           </section>
+
+          <section id="posView" class="view-panel" hidden>
+            <div class="page-intro"><div><p class="eyebrow">POINT OF SALE</p><h2>New service sale</h2><p class="muted">Create an invoice and record a customer payment.</p></div><span class="role-badge">LKR · ONLINE</span></div>
+            <div class="pos-layout">
+              <section class="content-card pos-catalog"><div class="directory-toolbar"><h3>Service catalogue</h3><input id="posSearch" class="search-input" type="search" placeholder="Search services…"></div><div id="posProducts" class="pos-products"></div></section>
+              <section class="content-card pos-cart"><h3>Current sale</h3><label for="saleCustomer">Customer</label><select id="saleCustomer"><option value="">Walk-in / no customer</option></select><div id="cartItems" class="cart-items"><p class="empty-state">Select a service to start a sale.</p></div><div class="sale-totals"><div><span>Subtotal</span><strong id="saleSubtotal">Rs. 0.00</strong></div><div class="discount-row"><label for="saleDiscount">Discount (LKR)</label><input id="saleDiscount" type="number" min="0" value="0"></div><div><span>Total</span><strong id="saleTotal">Rs. 0.00</strong></div></div><label for="salePayment">Payment received (LKR)</label><input id="salePayment" type="number" min="0" value="0"><label for="saleMethod">Payment method</label><select id="saleMethod"><option value="CASH">Cash</option><option value="BANK_TRANSFER">Bank transfer</option><option value="CARD">Card</option><option value="ONLINE">Online payment</option></select><label for="saleReference">Payment reference</label><input id="saleReference" placeholder="Optional reference"><button class="primary-button" id="completeSale">Complete sale & create invoice</button><p id="saleMessage" class="message" role="status"></p></section>
+            </div>
+          </section>
+          <section id="servicesView" class="view-panel" hidden>
+            <div class="page-intro"><div><p class="eyebrow">SERVICE CATALOGUE</p><h2>Services & plans</h2><p class="muted">Manage VPN plans, IPTV packages and other digital services.</p></div><button class="primary-button small-button" id="addService">+ Add service</button></div>
+            <section class="content-card"><form id="serviceForm" class="customer-form" hidden><input id="serviceId" type="hidden"><div class="form-grid"><div><label for="serviceName">Service / plan name *</label><input id="serviceName" required maxlength="120"></div><div><label for="serviceCategory">Category</label><select id="serviceCategory"><option>VPN</option><option>IPTV</option><option>Web Development</option><option>Software</option><option>Other Digital Service</option></select></div><div><label for="servicePrice">Selling price (LKR) *</label><input id="servicePrice" type="number" min="0" step="0.01" required></div><div><label for="serviceCost">Cost price (LKR)</label><input id="serviceCost" type="number" min="0" step="0.01" value="0"></div><div class="wide"><label for="serviceDescription">Description</label><textarea id="serviceDescription" rows="2"></textarea></div></div><div class="form-actions"><button class="primary-button small-button" type="submit">Save service</button><button class="secondary-button" type="button" id="cancelService">Cancel</button></div></form><p id="serviceMessage" class="message" role="status"></p><div id="serviceList" class="service-list"></div></section>
+          </section>
+          <section id="salesView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">TRANSACTION HISTORY</p><h2>Sales & invoices</h2><p class="muted">Recent invoices created through Vexora POS.</p></div><button class="secondary-button" id="refreshSales">↻ Refresh</button></div><section class="content-card"><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody id="salesRows"><tr><td colspan="6" class="empty-state">Loading sales…</td></tr></tbody></table></div></section></section>
           <section id="teamView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">ACCESS CONTROL</p><h2>Team access</h2><p class="muted">Create staff accounts and assign workspace roles.</p></div></div>
             <section class="content-card" id="staffCard"><div class="section-heading"><div><h3>Create a team account</h3><p class="muted">A verification email will be sent to the new member.</p></div></div><form id="staffForm"><div class="form-grid">
               <div><label for="staffName">Staff name</label><input id="staffName" required></div><div><label for="staffEmail">Staff email</label><input id="staffEmail" type="email" required></div>
