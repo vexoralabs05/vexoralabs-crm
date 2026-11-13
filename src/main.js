@@ -107,6 +107,7 @@ function renderCustomerRows() {
 async function loadCustomers(){customers=await api("getCustomers");renderCustomerRows();}
 async function loadWorkspace() {
   const data = await api("getAppData");
+  document.querySelector(".app-shell").classList.add("dashboard-mode");
   $("authCard").hidden = true;
   $("dashboard").hidden = false;
   $("userBar").hidden = false;
@@ -218,6 +219,7 @@ function startAuthListener() {
   onAuthStateChanged(auth, async user => {
     currentUser = user;
     if (!user) {
+      document.querySelector(".app-shell").classList.remove("dashboard-mode");
       $("authCard").hidden = false; $("dashboard").hidden = true; $("userBar").hidden = true;
       $("password").value = "";
       return;
