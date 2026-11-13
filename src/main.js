@@ -3,7 +3,7 @@ import {
   sendPasswordResetEmail, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { auth, authReady } from "./firebase.js";
-import { API_BASE_URL } from "./config.js";
+import { APPS_SCRIPT_URL } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
 let currentUser = null;
@@ -27,17 +27,50 @@ function friendlyError(error) {
   };
   return known[error.code] || error.message || "Something went wrong.";
 }
+const bridgeFrame = $("crmBridge");
+let bridgeReady = false;
+let bridgeWaiters = [];
+const bridgeRequests = new Map();
+let requestCounter = 0;
+
+if (APPS_SCRIPT_URL) bridgeFrame.src = APPS_SCRIPT_URL;
+window.addEventListener("message", event => {
+  if (event.source !== bridgeFrame.contentWindow) return;
+  const message = event.data || {};
+  if (message.type === "VEXORA_BRIDGE_READY") {
+    bridgeReady = true;
+    bridgeWaiters.splice(0).forEach(resolve => resolve());
+    return;
+  }
+  if (message.type === "VEXORA_BRIDGE_RESULT" && bridgeRequests.has(message.requestId)) {
+    const pending = bridgeRequests.get(message.requestId);
+    bridgeRequests.delete(message.requestId);
+    clearTimeout(pending.timer);
+    if (message.ok) pending.resolve(message.data);
+    else pending.reject(new Error(message.error || "Google Apps Script request failed."));
+  }
+});
+function waitForBridge() {
+  if (bridgeReady) return Promise.resolve();
+  if (!APPS_SCRIPT_URL) return Promise.reject(new Error("Google Apps Script Web App URL is not configured in src/config.js."));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Cannot connect to Google Apps Script. Check the deployed /exec URL and Web App access settings.")), 20000);
+    bridgeWaiters.push(() => { clearTimeout(timer); resolve(); });
+  });
+}
 async function api(action, payload = {}) {
   if (!currentUser) throw new Error("Please sign in again.");
+  await waitForBridge();
   const idToken = await currentUser.getIdToken();
-  const response = await fetch(API_BASE_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, idToken, payload })
+  const requestId = "req-" + (++requestCounter);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      bridgeRequests.delete(requestId);
+      reject(new Error("Google Apps Script did not respond. Check its deployment and execution permissions."));
+    }, 30000);
+    bridgeRequests.set(requestId, { resolve, reject, timer });
+    bridgeFrame.contentWindow.postMessage({ type: "VEXORA_BRIDGE_REQUEST", requestId, action, idToken, payload }, "*");
   });
-  const result = await response.json();
-  if (!response.ok || !result.ok) throw new Error(result.error || "CRM API request failed.");
-  return result.data;
 }
 function setBusy(busy) {
   $("emailSignIn").disabled = busy;
