@@ -136,6 +136,7 @@ function renderSales(){
 async function loadWorkspace() {
   const data = await api("getAppData");
   document.querySelector(".app-shell").classList.add("dashboard-mode");
+  $("authLoading").hidden = true;
   $("authCard").hidden = true;
   $("dashboard").hidden = false;
   $("userBar").hidden = false;
