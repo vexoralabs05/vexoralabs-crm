@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/crm.js": {
+      "maxDuration": 10
+    }
+  }
+}
