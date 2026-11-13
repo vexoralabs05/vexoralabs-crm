@@ -55,6 +55,9 @@ function crmBridge(action, idToken, payload) {
   switch (action) {
     case "getAppData": return getAppData(String(idToken || ""));
     case "getCustomers": return getCustomers(String(idToken || ""));
+    case "getPOSData": return getPOSData(String(idToken || ""));
+    case "saveService": return saveService(String(idToken || ""), payload.service || payload);
+    case "createSale": return createSale(String(idToken || ""), payload);
     case "saveCustomer": return saveCustomer(String(idToken || ""), payload.customer || payload);
     case "deleteCustomer": return deleteCustomer(String(idToken || ""), payload.customerId);
     case "createStaffAccount": return createStaffAccount(String(idToken || ""), payload);
@@ -75,6 +78,9 @@ function doPost(e) {
     switch (body.action) {
       case "getAppData": data = getAppData(token); break;
       case "getCustomers": data = getCustomers(token); break;
+      case "getPOSData": data = getPOSData(token); break;
+      case "saveService": data = saveService(token, payload.service || payload); break;
+      case "createSale": data = createSale(token, payload); break;
       case "saveCustomer": data = saveCustomer(token, payload.customer || payload); break;
       case "deleteCustomer": data = deleteCustomer(token, payload.customerId); break;
       case "createStaffAccount": data = createStaffAccount(token, payload); break;
@@ -180,6 +186,87 @@ function deleteCustomer(idToken, customerId) {
   sheet.deleteRow(index+1);
   logActivity_(findUser_(verifyFirebaseToken_(idToken).email).user_id,"DELETE","Customer",customerId,"Customer deleted");
   return true;
+}
+
+
+function getPOSData(idToken) {
+  requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER","SALES","ACCOUNTANT"]);
+  const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
+  const read = name => {
+    const sh = ss.getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) return [];
+    const values = sh.getDataRange().getValues(), headers = values.shift();
+    return values.filter(r => r[0]).map(r => Object.fromEntries(headers.map((h,i)=>[h,r[i]])));
+  };
+  return { services: read("Products").filter(p => String(p.status).toUpperCase() !== "ARCHIVED"),
+    customers: read("Customers").filter(c => String(c.status).toUpperCase() !== "INACTIVE"),
+    invoices: read("Invoices").slice(-12).reverse(),
+    payments: read("Payments").slice(-12).reverse() };
+}
+
+function saveService(idToken, service) {
+  const actor = requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER"]);
+  if (!service || !String(service.name || "").trim()) throw new Error("Service name is required.");
+  const price = Number(service.selling_price);
+  const cost = Number(service.cost_price || 0);
+  if (!Number.isFinite(price) || price < 0 || !Number.isFinite(cost) || cost < 0) throw new Error("Enter valid LKR prices.");
+  const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Products");
+  const values = sheet.getDataRange().getValues(), headers = values[0], col = Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const id = String(service.product_id || Utilities.getUuid());
+  const existing = values.findIndex((r,i)=>i>0 && String(r[col.product_id])===id);
+  const now = new Date().toISOString();
+  const record = {product_id:id,product_code:String(service.product_code || "SRV-"+Utilities.getUuid().slice(0,8).toUpperCase()),
+    name:String(service.name).trim(),category:String(service.category || "Digital Service").trim(),
+    description:String(service.description || "").trim(),cost_price:cost,selling_price:price,
+    status:String(service.status || "ACTIVE").toUpperCase(),created_at:existing>0?values[existing][col.created_at]:now,updated_at:now};
+  const row = headers.map(h=>record[h] ?? "");
+  if(existing>0) sheet.getRange(existing+1,1,1,headers.length).setValues([row]); else sheet.appendRow(row);
+  logActivity_(actor.user_id, existing>0?"UPDATE":"CREATE","Service",id,record.name);
+  return record;
+}
+
+function createSale(idToken, payload) {
+  const actor = requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  if (!items.length) throw new Error("Add at least one service to the sale.");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
+    const products = ss.getSheetByName("Products"), invoices = ss.getSheetByName("Invoices");
+    const invoiceItems = ss.getSheetByName("Invoice_Items"), payments = ss.getSheetByName("Payments");
+    const pv = products.getDataRange().getValues(), ph = pv[0], pc = Object.fromEntries(ph.map((h,i)=>[h,i]));
+    let subtotal = 0;
+    const lines = items.map(item => {
+      const row = pv.find((r,i)=>i>0 && String(r[pc.product_id])===String(item.product_id));
+      if (!row || String(row[pc.status]).toUpperCase()!=="ACTIVE") throw new Error("A selected service is unavailable.");
+      const quantity = Number(item.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1000) throw new Error("Invalid service quantity.");
+      const unit = Number(row[pc.selling_price]);
+      const lineTotal = Math.round(unit * quantity * 100) / 100;
+      subtotal += lineTotal;
+      return {product_id:row[pc.product_id],description:row[pc.name],quantity,unit_price:unit,discount:0,line_total:lineTotal};
+    });
+    const discount = Number(payload.discount || 0), tax = Number(payload.tax || 0);
+    if (!Number.isFinite(discount) || discount<0 || discount>subtotal || !Number.isFinite(tax) || tax<0) throw new Error("Invalid discount or tax.");
+    const total = Math.round((subtotal-discount+tax)*100)/100;
+    const paid = Number(payload.paid_amount || 0);
+    if (!Number.isFinite(paid) || paid<0 || paid>total) throw new Error("Payment must be between Rs. 0 and the invoice total.");
+    const customerId = String(payload.customer_id || "");
+    if (customerId) {
+      const cv=ss.getSheetByName("Customers").getDataRange().getValues();
+      if (!cv.slice(1).some(r=>String(r[0])===customerId)) throw new Error("Selected customer was not found.");
+    }
+    const now = new Date().toISOString(), invoiceId=Utilities.getUuid();
+    const invoiceNumber="VX-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMdd")+"-"+Utilities.getUuid().slice(0,5).toUpperCase();
+    const balance=Math.round((total-paid)*100)/100;
+    const status=balance<=0?"PAID":paid>0?"PARTIAL":"UNPAID";
+    invoices.appendRow([invoiceId,invoiceNumber,customerId,now.slice(0,10),now.slice(0,10),subtotal,discount,tax,total,paid,balance,status,now,now]);
+    lines.forEach(line=>invoiceItems.appendRow([Utilities.getUuid(),invoiceId,line.product_id,line.description,line.quantity,line.unit_price,line.discount,line.line_total]));
+    if(paid>0) payments.appendRow([Utilities.getUuid(),invoiceId,customerId,paid,String(payload.payment_method||"CASH").toUpperCase(),String(payload.reference||""),now.slice(0,10),"COMPLETED",now]);
+    logActivity_(actor.user_id,"CREATE","Invoice",invoiceId,invoiceNumber+" / LKR "+total);
+    return {invoice_id:invoiceId,invoice_number:invoiceNumber,subtotal,discount,tax,total,paid_amount:paid,balance,status,items:lines};
+  } finally { lock.releaseLock(); }
 }
 
 function createStaffAccount(idToken, payload) {
