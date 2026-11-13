@@ -23,7 +23,10 @@ const CRM = {
 function doGet() {
   return HtmlService.createHtmlOutputFromFile("App")
     .setTitle("Vexora Labs CRM")
-    .addMetaTag("viewport", "width=device-width, initial-scale=1");
+    .addMetaTag("viewport", "width=device-width, initial-scale=1")
+    // Allow the GitHub Pages CRM shell to display this authenticated app.
+    // All data access remains protected by Firebase ID-token and sheet-role checks.
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function bootstrapVexoraAdmins() {
