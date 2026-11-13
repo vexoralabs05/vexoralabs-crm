@@ -35,7 +35,9 @@ let requestCounter = 0;
 
 if (APPS_SCRIPT_URL) bridgeFrame.src = APPS_SCRIPT_URL;
 window.addEventListener("message", event => {
-  if (!["script.google.com", "script.googleusercontent.com"].some(host => event.origin === "https://" + host || event.origin.endsWith("." + host))) return;
+  // Apps Script HTML Service can use an opaque sandbox origin ("null").
+  // Validate the exact iframe window instead of relying on event.origin.
+  if (event.source !== bridgeFrame.contentWindow) return;
   const message = event.data || {};
   if (message.type === "VEXORA_BRIDGE_READY") {
     bridgeReady = true;
