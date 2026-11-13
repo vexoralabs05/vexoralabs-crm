@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{color-scheme:dark;--bg:#080d18;--panel:#101a2b;--line:#26354c;--muted:#9aa9bd;--red:#e23b45}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 5%,#1b2a45,transparent 38%),var(--bg);color:#f5f7fb;font:15px Inter,system-ui,sans-serif}
+    .wrap{max-width:1100px;margin:auto;padding:28px}.card{background:rgba(16,26,43,.94);border:1px solid var(--line);border-radius:18px;padding:24px;margin:18px 0}
+    .brand{font-size:12px;letter-spacing:.2em;color:#f16a72;font-weight:800}.hero{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    h1{font-size:clamp(28px,5vw,42px);margin:8px 0}h2{margin-top:0}p,.muted{color:var(--muted);line-height:1.6}
+    input,select,textarea{width:100%;background:#080f1d;border:1px solid #344258;border-radius:9px;padding:12px;color:#fff;margin:6px 0 14px}
+    label{font-size:13px;color:#cbd5e1}button{border:0;border-radius:9px;padding:12px 16px;background:linear-gradient(100deg,#e23b45,#b91c2c);color:#fff;font-weight:700;cursor:pointer}
+    button.secondary{background:#1c2a40;border:1px solid #344258}button:disabled{opacity:.5}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{background:#0b1423;border:1px solid var(--line);border-radius:12px;padding:16px}.stat strong{display:block;font-size:28px;margin-top:8px}
+    .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.hidden{display:none!important}.msg{min-height:22px;color:#fda4af}.success{color:#6ee7b7}
+    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px;border-bottom:1px solid var(--line);font-size:13px}th{color:#fda4af}
+    .topline{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.badge{display:inline-block;padding:5px 9px;border-radius:99px;background:#34202b;color:#fda4af;font-size:11px}
+    @media(max-width:600px){.wrap{padding:14px}.card{padding:17px}table{display:block;overflow:auto}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero"><div><div class="brand">VEXORA LABS</div><h1>CRM Workspace</h1><p>Customers, sales and business operations in one place.</p></div><div id="userBar" class="hidden"><span id="who"></span> <button class="secondary" id="logout">Sign out</button></div></div>
+  <section id="authCard" class="card">
+    <h2>Sign in</h2><p>Authorized Vexora team members only.</p>
+    <label>Email</label><input id="email" type="email" autocomplete="username" placeholder="you@company.com">
+    <label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="row"><button id="login">Sign in</button><button id="google" class="secondary">Continue with Google</button></div>
+    <p id="authMsg" class="msg"></p>
+    <details><summary>First-time CEO account setup</summary><p class="muted">Only the two pre-approved CEO email addresses can register here. Use your own email and choose your own strong password.</p>
+      <label>Confirm password</label><input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat password">
+      <button id="registerCeo" class="secondary">Create my CEO account</button>
+    </details>
+  </section>
+  <section id="dashboard" class="hidden">
+    <div class="card"><div class="topline"><div><span class="badge" id="role"></span><h2 id="welcome">Dashboard</h2><p id="userEmail"></p></div><button id="refresh" class="secondary">Refresh data</button></div>
+      <div class="grid" id="stats"></div>
+    </div>
+    <div class="card"><div class="topline"><h2>Customer Management</h2><button id="newCustomer">Add customer</button></div>
+      <form id="customerForm" class="hidden"><input id="customerId" type="hidden">
+        <div class="row"><div><label>Customer name *</label><input id="customerName" required></div><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail" type="email"></div></div>
+        <div class="row"><div><label>Company</label><input id="customerCompany"></div><div><label>Address</label><input id="customerAddress"></div></div>
+        <label>Notes</label><textarea id="customerNotes" rows="2"></textarea>
+        <button type="submit">Save customer</button> <button type="button" id="cancelCustomer" class="secondary">Cancel</button>
+      </form>
+      <p id="customerMsg" class="msg"></p><div style="overflow:auto"><table><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Company</th><th>Actions</th></tr></thead><tbody id="customers"></tbody></table></div>
+    </div>
+    <div class="card" id="staffCard"><h2>Team access</h2><p>Create staff accounts and assign a job role. Super Admin only.</p>
+      <form id="staffForm"><div class="row"><div><label>Staff name</label><input id="staffName" required></div><div><label>Staff email</label><input id="staffEmail" type="email" required></div><div><label>Temporary password (12+ characters)</label><input id="staffPassword" type="password" minlength="12" required></div><div><label>Role</label><select id="staffRole"><option>STAFF</option><option>SALES</option><option>ACCOUNTANT</option><option>MANAGER</option><option>ADMIN</option></select></div></div><button>Create staff account</button></form><p id="staffMsg" class="msg"></p>
+    </div>
+  </section>
+</div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+const firebaseConfig={apiKey:"AIzaSyDDG3GkMoTgMKxEwAu0osaDr-xg87IyQfU",authDomain:"vexora-labs-crm-798fe.firebaseapp.com",projectId:"vexora-labs-crm-798fe",storageBucket:"vexora-labs-crm-798fe.firebasestorage.app",messagingSenderId:"912708185959",appId:"1:912708185959:web:16875dd237ddda900d09c2"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),google=new GoogleAuthProvider();google.setCustomParameters({prompt:"select_account"});
+const $=id=>document.getElementById(id);let currentUser=null,token=null,customers=[];
+function callServer(fn,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(new Error(e.message||String(e)))[fn](...args)));}
+function msg(id,text,ok=false){$(id).textContent=text;$(id).className=ok?"msg success":"msg";}
+async function loadWorkspace(user){token=await user.getIdToken(true);const data=await callServer("getAppData",token);$("authCard").classList.add("hidden");$("dashboard").classList.remove("hidden");$("userBar").classList.remove("hidden");$("who").textContent=data.user.name;$("welcome").textContent="Welcome, "+data.user.name;$("userEmail").textContent=data.user.email;$("role").textContent=data.user.role;const labels={customers:"Customers",products:"Products",invoices:"Invoices",payments:"Payments",expenses:"Expenses",subscriptions:"Subscriptions"};$("stats").innerHTML=Object.entries(data.stats).map(([k,v])=>'<div class="stat">'+labels[k]+'<strong>'+v+'</strong></div>').join("");$("staffCard").classList.toggle("hidden",data.user.role!=="SUPER_ADMIN");await loadCustomers();}
+async function loadCustomers(){customers=await callServer("getCustomers",token);$("customers").innerHTML=customers.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.phone)+'</td><td>'+esc(c.email)+'</td><td>'+esc(c.company)+'</td><td><button class="secondary" data-edit="'+esc(c.customer_id)+'">Edit</button> <button class="secondary" data-delete="'+esc(c.customer_id)+'">Delete</button></td></tr>').join("");}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+$("login").onclick=async()=>{try{const cred=await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);await loadWorkspace(cred.user);}catch(e){msg("authMsg",e.message);}};
+$("google").onclick=async()=>{try{const cred=await signInWithPopup(auth,google);await loadWorkspace(cred.user);}catch(e){msg("authMsg",e.message);}};
+$("registerCeo").onclick=async()=>{const email=$("email").value.trim().toLowerCase(),pw=$("password").value;if(pw.length<12||pw!==$("confirmPassword").value){msg("authMsg","Use a 12+ character password and make both password fields match.");return;}try{const cred=await createUserWithEmailAndPassword(auth,email,pw);await sendEmailVerification(cred.user);msg("authMsg","Verification email sent. Verify your email, then sign in again.",true);await signOut(auth);}catch(e){msg("authMsg",e.message);}};
+$("refresh").onclick=()=>loadWorkspace(auth.currentUser).catch(e=>msg("customerMsg",e.message));
+$("logout").onclick=()=>signOut(auth);
+$("newCustomer").onclick=()=>{$("customerForm").classList.remove("hidden");$("customerForm").reset();$("customerId").value="";};
+$("cancelCustomer").onclick=()=>$("customerForm").classList.add("hidden");
+$("customerForm").onsubmit=async e=>{e.preventDefault();try{await callServer("saveCustomer",token,{customer_id:$("customerId").value,name:$("customerName").value,phone:$("customerPhone").value,email:$("customerEmail").value,company:$("customerCompany").value,address:$("customerAddress").value,notes:$("customerNotes").value});$("customerForm").classList.add("hidden");msg("customerMsg","Customer saved.",true);await loadCustomers();}catch(err){msg("customerMsg",err.message);}};
+$("customers").onclick=async e=>{const edit=e.target.dataset.edit,del=e.target.dataset.delete;if(edit){const c=customers.find(x=>x.customer_id===edit);$("customerForm").classList.remove("hidden");$("customerId").value=c.customer_id;$("customerName").value=c.name;$("customerPhone").value=c.phone;$("customerEmail").value=c.email;$("customerCompany").value=c.company;$("customerAddress").value=c.address;$("customerNotes").value=c.notes;}if(del&&confirm("Delete this customer?")){try{await callServer("deleteCustomer",token,del);await loadCustomers();}catch(err){msg("customerMsg",err.message);}}};
+$("staffForm").onsubmit=async e=>{e.preventDefault();try{const r=await callServer("createStaffAccount",token,{name:$("staffName").value,email:$("staffEmail").value,password:$("staffPassword").value,role:$("staffRole").value});msg("staffMsg","Account created for "+r.email+". A verification email has been sent.",true);$("staffForm").reset();}catch(err){msg("staffMsg",err.message);}};
+$("password").addEventListener("keydown",e=>{if(e.key==="Enter")$("login").click();});
+$("resetPassword")?.addEventListener("click",async()=>{try{await sendPasswordResetEmail(auth,$("email").value.trim());msg("authMsg","Password reset email sent.",true);}catch(e){msg("authMsg",e.message);}});
+onAuthStateChanged(auth,user=>{currentUser=user;if(user){loadWorkspace(user).catch(e=>{msg("authMsg",e.message);$("authCard").classList.remove("hidden");$("dashboard").classList.add("hidden");});}else{$("authCard").classList.remove("hidden");$("dashboard").classList.add("hidden");$("userBar").classList.add("hidden");}});
+</script>
+</body></html>
