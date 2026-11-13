@@ -89,8 +89,10 @@ function resetCustomerForm() {
   $("customerForm").hidden = true;
 }
 
-await authReady;
 $("year").textContent = new Date().getFullYear();
+
+window.addEventListener("error", event => showMessage("message", "Application error: " + (event.message || "Unable to load CRM script.")));
+window.addEventListener("unhandledrejection", event => showMessage("message", "Initialization error: " + (event.reason?.message || String(event.reason || "Unknown error"))));
 
 $("googleSignIn").addEventListener("click", async () => {
   setBusy(true); showMessage("message", "");
@@ -176,16 +178,23 @@ $("staffForm").addEventListener("submit", async event => {
   } catch (error) { showMessage("staffMsg", error.message); }
 });
 
-onAuthStateChanged(auth, async user => {
-  currentUser = user;
-  if (!user) {
-    $("authCard").hidden = false; $("dashboard").hidden = true; $("userBar").hidden = true;
-    $("password").value = "";
-    return;
-  }
-  try { await loadWorkspace(); }
-  catch (error) {
-    $("authCard").hidden = false; $("dashboard").hidden = true;
-    showMessage("message", error.message);
-  }
+function startAuthListener() {
+  onAuthStateChanged(auth, async user => {
+    currentUser = user;
+    if (!user) {
+      $("authCard").hidden = false; $("dashboard").hidden = true; $("userBar").hidden = true;
+      $("password").value = "";
+      return;
+    }
+    try { await loadWorkspace(); }
+    catch (error) {
+      $("authCard").hidden = false; $("dashboard").hidden = true;
+      showMessage("message", "Signed in, but CRM data could not load: " + error.message);
+    }
+  }, error => showMessage("message", friendlyError(error)));
+}
+
+authReady.then(startAuthListener).catch(error => {
+  showMessage("message", "Firebase initialization failed: " + friendlyError(error));
+  startAuthListener();
 });
