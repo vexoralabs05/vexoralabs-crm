@@ -7,7 +7,11 @@ import { APPS_SCRIPT_URL } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
 let currentUser = null;
-let customers = [];\nlet services = [];\nlet saleCustomers = [];\nlet cart = [];\nlet recentInvoices = [];
+let customers = [];
+let services = [];
+let saleCustomers = [];
+let cart = [];
+let recentInvoices = [];
 
 function showMessage(id, text, success = false) {
   const el = $(id);
