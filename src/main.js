@@ -262,12 +262,16 @@ function startAuthListener() {
     currentUser = user;
     if (!user) {
       document.querySelector(".app-shell").classList.remove("dashboard-mode");
+      $("authLoading").hidden = true;
       $("authCard").hidden = false; $("dashboard").hidden = true; $("userBar").hidden = true;
       $("password").value = "";
       return;
     }
+    $("authLoading").hidden = false;
+    $("authCard").hidden = true;
     try { await loadWorkspace(); showView('overview'); }
     catch (error) {
+      $("authLoading").hidden = true;
       $("authCard").hidden = false; $("dashboard").hidden = true;
       showMessage("message", "Signed in, but CRM data could not load: " + error.message);
     }
