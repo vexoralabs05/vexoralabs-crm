@@ -87,40 +87,49 @@ function escapeHtml(value) {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   })[c]);
 }
-async function loadCustomers() {
-  customers = await api("getCustomers");
-  $("customers").replaceChildren();
-  if (!customers.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="5" class="empty-state">No customers yet. Add your first customer.</td>';
-    $("customers").append(tr);
+function renderCustomerRows() {
+  const query = ($("customerSearch")?.value || "").trim().toLowerCase();
+  const filtered = customers.filter(c => [c.name,c.phone,c.email,c.company,c.customer_code].some(v => String(v || "").toLowerCase().includes(query)));
+  $("customerCount").textContent = `${filtered.length} of ${customers.length} customer records`;
+  $("customers").replaceChildren(); $("overviewCustomerRows").replaceChildren();
+  if (!filtered.length) {
+    $("customers").innerHTML = `<tr><td colspan="5" class="empty-state">${customers.length ? "No customers match your search." : "No customers yet. Add your first customer."}</td></tr>`;
+    $("overviewCustomerRows").innerHTML = '<tr><td colspan="4" class="empty-state">No customer records yet.</td></tr>';
     return;
   }
-  for (const c of customers) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.customer_code)}</small></td>
-      <td>${escapeHtml(c.phone)}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.company)}</td>
-      <td class="actions"><button class="secondary-button compact" data-edit="${escapeHtml(c.customer_id)}">Edit</button>
-      <button class="danger-button compact" data-delete="${escapeHtml(c.customer_id)}">Delete</button></td>`;
+  filtered.forEach((c,index) => {
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.customer_code)}</small></td><td>${escapeHtml(c.phone)}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.company)}</td><td class="actions"><button class="secondary-button compact" data-edit="${escapeHtml(c.customer_id)}">Edit</button> <button class="danger-button compact" data-delete="${escapeHtml(c.customer_id)}">Delete</button></td>`;
     $("customers").append(tr);
-  }
+    if(index<5){const preview=document.createElement("tr");preview.innerHTML=`<td><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.customer_code)}</small></td><td>${escapeHtml(c.phone)}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.company)}</td>`;$("overviewCustomerRows").append(preview);}
+  });
 }
+async function loadCustomers(){customers=await api("getCustomers");renderCustomerRows();}
 async function loadWorkspace() {
   const data = await api("getAppData");
   $("authCard").hidden = true;
   $("dashboard").hidden = false;
   $("userBar").hidden = false;
   $("who").textContent = data.user.name;
-  $("welcome").textContent = `Welcome, ${data.user.name}`;
+  $("welcome").textContent = `Welcome back, ${data.user.name}`;
   $("userEmail").textContent = data.user.email;
-  $("role").textContent = data.user.role;
-  const labels = { customers: "Customers", products: "Products", invoices: "Invoices", payments: "Payments", expenses: "Expenses", subscriptions: "Subscriptions" };
-  $("stats").innerHTML = Object.entries(data.stats).map(([key, value]) =>
-    `<article class="stat-card"><span>${labels[key] || key}</span><strong>${Number(value) || 0}</strong></article>`
-  ).join("");
-  $("staffCard").hidden = data.user.role !== "SUPER_ADMIN";
+  $("role").textContent = data.user.role.replaceAll("_"," ");
+  $("teamNav").hidden = data.user.role !== "SUPER_ADMIN";
+  const labels = {customers:["Customers","♙"],products:["Products","▣"],invoices:["Invoices","▤"],payments:["Payments","↗"],expenses:["Expenses","◈"],subscriptions:["Subscriptions","∞"]};
+  $("stats").innerHTML = Object.entries(data.stats).map(([key,value])=>{const item=labels[key]||[key,"•"];return `<article class="stat-card"><div class="stat-top"><span>${item[0]}</span><span class="stat-icon">${item[1]}</span></div><strong>${Number(value)||0}</strong></article>`;}).join("");
   await loadCustomers();
 }
+function showView(viewId) {
+  document.querySelectorAll(".view-panel").forEach(panel=>panel.hidden=panel.id!==viewId);
+  document.querySelectorAll(".nav-item").forEach(item=>item.classList.toggle("active",item.dataset.view===viewId));
+  const labels={overview:["Overview","Dashboard"],customersView:["Customers","Customers"],teamView:["Team access","Team access"]};
+  const item=labels[viewId]||labels.overview;$("pageName").textContent=item[0];$("pageTitle").textContent=item[1];
+}
+document.querySelectorAll(".nav-item").forEach(item=>item.addEventListener("click",()=>showView(item.dataset.view)));
+$("overviewCustomers").addEventListener("click",()=>showView("customersView"));
+$("customerSearch").addEventListener("input",renderCustomerRows);
+$("dashYear").textContent=new Date().getFullYear();
+
 function resetCustomerForm() {
   $("customerForm").reset();
   $("customerId").value = "";
@@ -206,7 +215,7 @@ function startAuthListener() {
       $("password").value = "";
       return;
     }
-    try { await loadWorkspace(); }
+    try { await loadWorkspace(); showView('overview'); }
     catch (error) {
       $("authCard").hidden = false; $("dashboard").hidden = true;
       showMessage("message", "Signed in, but CRM data could not load: " + error.message);
