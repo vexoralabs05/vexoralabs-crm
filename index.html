@@ -43,47 +43,49 @@
         <footer>© <span id="year"></span> Vexora Labs. Authorized access only.</footer>
       </section>
 
-      <section id="dashboard" class="dashboard" hidden>
-        <div class="dashboard-heading">
-          <div><p class="eyebrow">OVERVIEW</p><h2 id="welcome">Dashboard</h2><p class="muted" id="userEmail"></p></div>
-          <div class="heading-actions"><span class="role-badge" id="role"></span><button class="secondary-button" id="refresh">Refresh</button></div>
-        </div>
-        <div class="stats-grid" id="stats"></div>
-
-        <section class="content-card">
-          <div class="section-heading"><div><p class="eyebrow">RELATIONSHIP MANAGEMENT</p><h3>Customers</h3></div><button class="primary-button small-button" id="newCustomer">+ Add customer</button></div>
-          <form id="customerForm" class="customer-form" hidden>
-            <input id="customerId" type="hidden">
-            <div class="form-grid">
-              <div><label for="customerName">Customer name *</label><input id="customerName" required maxlength="120"></div>
-              <div><label for="customerPhone">Phone</label><input id="customerPhone" maxlength="40"></div>
-              <div><label for="customerEmail">Email</label><input id="customerEmail" type="email" maxlength="160"></div>
-              <div><label for="customerCompany">Company</label><input id="customerCompany" maxlength="120"></div>
-              <div class="wide"><label for="customerAddress">Address</label><input id="customerAddress" maxlength="300"></div>
-              <div class="wide"><label for="customerNotes">Notes</label><textarea id="customerNotes" rows="2" maxlength="1000"></textarea></div>
-            </div>
-            <div class="form-actions"><button class="primary-button small-button" type="submit">Save customer</button><button class="secondary-button" type="button" id="cancelCustomer">Cancel</button></div>
-          </form>
-          <p id="customerMsg" class="message" role="status"></p>
-          <div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Company</th><th>Actions</th></tr></thead><tbody id="customers"></tbody></table></div>
-        </section>
-
-        <section class="content-card" id="staffCard" hidden>
-          <div class="section-heading"><div><p class="eyebrow">ACCESS CONTROL</p><h3>Team accounts</h3></div></div>
-          <p class="muted">Create staff accounts and assign a role. Super Admin access required.</p>
-          <form id="staffForm">
-            <div class="form-grid">
-              <div><label for="staffName">Staff name</label><input id="staffName" required></div>
-              <div><label for="staffEmail">Staff email</label><input id="staffEmail" type="email" required></div>
+      <section id="dashboard" class="dashboard-layout" hidden>
+        <aside class="sidebar">
+          <div class="side-brand"><img src="./index1.png" alt=""><div><strong>VEXORA</strong><small>BUSINESS SUITE</small></div></div>
+          <p class="side-label">WORKSPACE</p>
+          <nav class="side-nav" aria-label="Dashboard navigation">
+            <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
+            <button class="nav-item" data-view="customersView"><span>♙</span> Customers</button>
+            <button class="nav-item" data-view="teamView" id="teamNav" hidden><span>♧</span> Team access</button>
+          </nav>
+          <div class="sidebar-bottom"><i></i> Systems operational</div>
+        </aside>
+        <div class="dashboard-main">
+          <header class="dash-topbar"><div><small>Workspace / <b id="pageName">Overview</b></small><h1 id="pageTitle">Dashboard</h1></div><div class="dash-actions"><span class="role-badge" id="role"></span><button class="secondary-button" id="refresh">↻ Refresh</button></div></header>
+          <section id="overview" class="view-panel">
+            <div class="welcome-banner"><div><p class="eyebrow">YOUR BUSINESS AT A GLANCE</p><h2 id="welcome">Welcome back</h2><p id="userEmail" class="welcome-email"></p><p class="welcome-copy">Here’s what’s happening across your workspace today.</p></div><div class="welcome-mark">V<span>.</span></div></div>
+            <div class="section-title-row"><div><p class="eyebrow">PERFORMANCE</p><h2>Business overview</h2></div><span class="updated-label">Live workspace data</span></div>
+            <div class="stats-grid" id="stats"></div>
+            <section class="content-card"><div class="section-heading"><div><p class="eyebrow">RELATIONSHIP MANAGEMENT</p><h3>Customer directory</h3><p class="muted">Your latest customer records</p></div><button class="primary-button small-button" id="overviewCustomers">View customers →</button></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Company</th></tr></thead><tbody id="overviewCustomerRows"></tbody></table></div></section>
+          </section>
+          <section id="customersView" class="view-panel" hidden>
+            <div class="page-intro"><div><p class="eyebrow">RELATIONSHIP MANAGEMENT</p><h2>Customers</h2><p class="muted">Manage your customer records in one place.</p></div><button class="primary-button small-button" id="newCustomer">+ Add customer</button></div>
+            <section class="content-card"><div class="directory-toolbar"><div><h3>All customers</h3><p class="muted" id="customerCount">Loading records…</p></div><input id="customerSearch" class="search-input" type="search" placeholder="Search name, phone or email…" aria-label="Search customers"></div>
+              <form id="customerForm" class="customer-form" hidden><input id="customerId" type="hidden"><div class="form-grid">
+                <div><label for="customerName">Customer name *</label><input id="customerName" required maxlength="120"></div>
+                <div><label for="customerPhone">Phone</label><input id="customerPhone" maxlength="40"></div>
+                <div><label for="customerEmail">Email</label><input id="customerEmail" type="email" maxlength="160"></div>
+                <div><label for="customerCompany">Company</label><input id="customerCompany" maxlength="120"></div>
+                <div class="wide"><label for="customerAddress">Address</label><input id="customerAddress" maxlength="300"></div>
+                <div class="wide"><label for="customerNotes">Notes</label><textarea id="customerNotes" rows="2" maxlength="1000"></textarea></div>
+              </div><div class="form-actions"><button class="primary-button small-button" type="submit">Save customer</button><button class="secondary-button" type="button" id="cancelCustomer">Cancel</button></div></form>
+              <p id="customerMsg" class="message" role="status"></p><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Company</th><th>Actions</th></tr></thead><tbody id="customers"></tbody></table></div>
+            </section>
+          </section>
+          <section id="teamView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">ACCESS CONTROL</p><h2>Team access</h2><p class="muted">Create staff accounts and assign workspace roles.</p></div></div>
+            <section class="content-card" id="staffCard"><div class="section-heading"><div><h3>Create a team account</h3><p class="muted">A verification email will be sent to the new member.</p></div></div><form id="staffForm"><div class="form-grid">
+              <div><label for="staffName">Staff name</label><input id="staffName" required></div><div><label for="staffEmail">Staff email</label><input id="staffEmail" type="email" required></div>
               <div><label for="staffPassword">Temporary password (12+ characters)</label><input id="staffPassword" type="password" minlength="12" required></div>
               <div><label for="staffRole">Role</label><select id="staffRole"><option>STAFF</option><option>SALES</option><option>ACCOUNTANT</option><option>MANAGER</option><option>ADMIN</option></select></div>
-            </div>
-            <button class="primary-button small-button" type="submit">Create staff account</button>
-          </form>
-          <p id="staffMsg" class="message" role="status"></p>
-        </section>
-      </section>
-    </section>
+            </div><button class="primary-button small-button" type="submit">Create staff account</button></form><p id="staffMsg" class="message" role="status"></p></section>
+          </section>
+          <footer class="dash-footer">© <span id="dashYear"></span> Vexora Labs · Secure business workspace</footer>
+        </div>
+      </section>    </section>
   </main>
   <iframe id="crmBridge" title="CRM secure connection" aria-hidden="true" style="position:fixed;width:1px;height:1px;left:-10px;bottom:-10px;border:0;opacity:0"></iframe>
   <script type="module" src="./src/main.js"></script>
