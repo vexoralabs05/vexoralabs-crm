@@ -115,9 +115,16 @@ async function loadWorkspace() {
   $("userEmail").textContent = data.user.email;
   $("role").textContent = data.user.role.replaceAll("_"," ");
   $("teamNav").hidden = data.user.role !== "SUPER_ADMIN";
+  const canViewCustomers = ["SUPER_ADMIN","ADMIN","MANAGER","SALES"].includes(data.user.role);
+  $("customersNav").hidden = !canViewCustomers;
   const labels = {customers:["Customers","♙"],products:["Products","▣"],invoices:["Invoices","▤"],payments:["Payments","↗"],expenses:["Expenses","◈"],subscriptions:["Subscriptions","∞"]};
   $("stats").innerHTML = Object.entries(data.stats).map(([key,value])=>{const item=labels[key]||[key,"•"];return `<article class="stat-card"><div class="stat-top"><span>${item[0]}</span><span class="stat-icon">${item[1]}</span></div><strong>${Number(value)||0}</strong></article>`;}).join("");
-  await loadCustomers();
+  if (canViewCustomers) {
+    await loadCustomers();
+  } else {
+    $("customerCount").textContent = "Customer access is restricted for your role.";
+    $("overviewCustomerRows").innerHTML = '<tr><td colspan="4" class="empty-state">Customer data is restricted for your role.</td></tr>';
+  }
 }
 function showView(viewId) {
   document.querySelectorAll(".view-panel").forEach(panel=>panel.hidden=panel.id!==viewId);
