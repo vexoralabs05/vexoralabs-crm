@@ -35,7 +35,7 @@ let requestCounter = 0;
 
 if (APPS_SCRIPT_URL) bridgeFrame.src = APPS_SCRIPT_URL;
 window.addEventListener("message", event => {
-  if (event.source !== bridgeFrame.contentWindow) return;
+  if (!["script.google.com", "script.googleusercontent.com"].some(host => event.origin === "https://" + host || event.origin.endsWith("." + host))) return;
   const message = event.data || {};
   if (message.type === "VEXORA_BRIDGE_READY") {
     bridgeReady = true;
