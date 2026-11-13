@@ -25,20 +25,26 @@ function doGet() {
   const bridgeHtml = `<!doctype html><html><head><meta charset="utf-8"></head><body>
 <script>
 const PARENT_ORIGIN = "https://vexoralabs05.github.io";
+let BRIDGE_CHANNEL = "";
 window.addEventListener("message", function(event) {
-  if (event.origin !== PARENT_ORIGIN || event.source !== window.top) return;
+  if (event.origin !== PARENT_ORIGIN) return;
   const m = event.data || {};
-  if (m.type !== "VEXORA_BRIDGE_REQUEST" || !m.requestId) return;
+  if (m.type === "VEXORA_BRIDGE_INIT" && m.channel) {
+    BRIDGE_CHANNEL = String(m.channel);
+    window.top.postMessage({type:"VEXORA_BRIDGE_READY",channel:BRIDGE_CHANNEL}, PARENT_ORIGIN);
+    return;
+  }
+  if (m.type !== "VEXORA_BRIDGE_REQUEST" || !m.requestId || !BRIDGE_CHANNEL || m.channel !== BRIDGE_CHANNEL) return;
+  const channel = BRIDGE_CHANNEL;
   google.script.run
     .withSuccessHandler(function(result) {
-      window.top.postMessage({type:"VEXORA_BRIDGE_RESULT",requestId:m.requestId,ok:true,data:result}, PARENT_ORIGIN);
+      window.top.postMessage({type:"VEXORA_BRIDGE_RESULT",channel:channel,requestId:m.requestId,ok:true,data:result}, PARENT_ORIGIN);
     })
     .withFailureHandler(function(error) {
-      window.top.postMessage({type:"VEXORA_BRIDGE_RESULT",requestId:m.requestId,ok:false,error:error && error.message ? error.message : "Apps Script error"}, PARENT_ORIGIN);
+      window.top.postMessage({type:"VEXORA_BRIDGE_RESULT",channel:channel,requestId:m.requestId,ok:false,error:error && error.message ? error.message : "Apps Script error"}, PARENT_ORIGIN);
     })
     .crmBridge(m.action, m.idToken, m.payload || {});
 });
-window.top.postMessage({type:"VEXORA_BRIDGE_READY"}, PARENT_ORIGIN);
 </script></body></html>`;
   return HtmlService.createHtmlOutput(bridgeHtml).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
