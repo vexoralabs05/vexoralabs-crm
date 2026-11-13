@@ -20,9 +20,40 @@ const CRM = {
   }
 };
 
-// GitHub Pages hosts the UI. Apps Script is JSON API only.
+// Hidden Apps Script iframe bridge. The CRM interface remains on GitHub Pages.
 function doGet() {
-  return jsonOutput_({ok:true,service:"Vexora Labs CRM API",message:"POST requests only."});
+  const bridgeHtml = `<!doctype html><html><head><meta charset="utf-8"></head><body>
+<script>
+const PARENT_ORIGIN = "https://vexoralabs05.github.io";
+window.addEventListener("message", function(event) {
+  if (event.origin !== PARENT_ORIGIN || event.source !== parent) return;
+  const m = event.data || {};
+  if (m.type !== "VEXORA_BRIDGE_REQUEST" || !m.requestId) return;
+  google.script.run
+    .withSuccessHandler(function(result) {
+      parent.postMessage({type:"VEXORA_BRIDGE_RESULT",requestId:m.requestId,ok:true,data:result}, PARENT_ORIGIN);
+    })
+    .withFailureHandler(function(error) {
+      parent.postMessage({type:"VEXORA_BRIDGE_RESULT",requestId:m.requestId,ok:false,error:error && error.message ? error.message : "Apps Script error"}, PARENT_ORIGIN);
+    })
+    .crmBridge(m.action, m.idToken, m.payload || {});
+});
+parent.postMessage({type:"VEXORA_BRIDGE_READY"}, PARENT_ORIGIN);
+</script></body></html>`;
+  return HtmlService.createHtmlOutput(bridgeHtml).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Called only through the hidden bridge. Every action verifies the Firebase ID token and CRM role.
+function crmBridge(action, idToken, payload) {
+  payload = payload || {};
+  switch (action) {
+    case "getAppData": return getAppData(String(idToken || ""));
+    case "getCustomers": return getCustomers(String(idToken || ""));
+    case "saveCustomer": return saveCustomer(String(idToken || ""), payload.customer || payload);
+    case "deleteCustomer": return deleteCustomer(String(idToken || ""), payload.customerId);
+    case "createStaffAccount": return createStaffAccount(String(idToken || ""), payload);
+    default: throw new Error("Unknown CRM action.");
+  }
 }
 
 function doPost(e) {
