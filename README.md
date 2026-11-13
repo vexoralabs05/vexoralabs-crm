@@ -1,43 +1,59 @@
 # Vexora Labs CRM
 
-Separate CRM application for Vexora Labs. It does not modify or integrate into the existing public Vexora website.
+Standalone CRM for Vexora Labs. The existing public Vexora website is not modified.
 
-## Current architecture
+## Architecture
 
-- Firebase Authentication: Google and Email/Password providers.
-- Google Sheets: private CRM database.
-- Google Apps Script: server-side access layer and role checks.
-- Apps Script HTML Service: hosts the authenticated CRM UI and uses `google.script.run` for server calls.
-- GitHub Pages: serves the public CRM entry page and embeds the Apps Script CRM workspace. The Apps Script app remains the trusted UI/backend host; the GitHub page is a launcher shell, not a replacement backend.
-- GitHub repository: source and version history. Do not put credentials, service-account keys, customer exports, or passwords here.
+- GitHub Pages: hosts the complete CRM frontend (HTML, CSS, JavaScript and `index1.png` logo).
+- Firebase Authentication: Google and Email/Password sign-in.
+- Vercel Serverless Function: small API relay with CORS. It is not a Cloudflare Worker and contains no CRM UI.
+- Google Apps Script: validates the relay secret, verifies Firebase identity, enforces CRM roles and reads/writes Sheets.
+- Google Sheets: the private CRM database.
 
-## Initial CEO accounts
+The GitHub Pages URL is `https://vexoralabs05.github.io/vexoralabs-crm/`.
 
-- Shenol: shenolperera5@gmail.com — SUPER_ADMIN
-- Thenul: thenulvidusitha10@gmail.com — SUPER_ADMIN
+## Deployment checklist
 
-CEO accounts are created by each CEO using the first-time setup in the CRM app. Only these two allowlisted email addresses are seeded as SUPER_ADMIN. Email verification is required before access.
+### 1. Google Apps Script
 
-## Deploying the Apps Script app
+1. Open the Apps Script project attached to **Vexora Labs CRM**.
+2. Replace `Code.gs` with `backend/Code.gs` from this repository.
+3. In Project Settings → Script Properties, keep `FIREBASE_WEB_API_KEY` and add `CRM_BRIDGE_SECRET` with a long random value (at least 32 random characters).
+4. Run `bootstrapVexoraAdmins` once if the CRM sheet tabs/admin rows have not already been initialized.
+5. Deploy → Manage deployments → Edit → New version → Deploy as a Web app, execute as the deploying account, access: Anyone. Copy the `/exec` URL.
+6. The Apps Script endpoint accepts requests only when the matching bridge secret is supplied by the Vercel function. Do not put that secret in GitHub.
 
-1. Open the private Google Sheet named **Vexora Labs CRM**.
-2. Extensions → Apps Script.
-3. Create an HTML file named `App`.
-4. Copy `backend/Code.gs` into `Code.gs` and `backend/App.html` into the HTML file.
-5. In Apps Script Project Settings → Script Properties, add:
-   - Property: `FIREBASE_WEB_API_KEY`
-   - Value: the Firebase Web API key from the Firebase web app config.
-6. Save. Run `bootstrapVexoraAdmins` once from the Apps Script editor and authorize it. It creates/updates the two CEO registry rows and ensures the CRM tabs exist without clearing data.
-7. In `doGet()`, retain `.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)` so the CRM can be displayed inside the GitHub Pages shell. Deploy → Manage deployments → Edit → New version → Deploy. Execute as **Me**. Copy the current deployment URL and keep it in the repository `index.html` iframe and fallback link.
-8. Enable GitHub Pages in repository Settings → Pages → Deploy from a branch → `main` → `/ (root)`. The public entry page is `https://vexoralabs05.github.io/vexoralabs-crm/` once Pages finishes publishing.
-9. In Firebase Authentication → Settings → Authorized domains, authorize the actual host shown in the browser during Firebase sign-in (for example, `script.google.com` or `script.googleusercontent.com` if the embedded app uses those origins). Do not add guessed domains; use the exact origin in the error.
-10. Each CEO opens the GitHub Pages URL or the fallback Apps Script link, enters their own approved email and chooses a unique password under **First-time CEO account setup**. Each verifies the email before signing in.
+### 2. Vercel API relay
 
-## Security notes
+1. Import this same GitHub repository at https://vercel.com/new.
+2. Deploy it. Vercel detects `api/crm.js` as a serverless function.
+3. In Vercel Project → Settings → Environment Variables, add:
+   - `APPS_SCRIPT_URL` = the Apps Script `/exec` URL
+   - `CRM_BRIDGE_SECRET` = the exact same secret saved in Apps Script Script Properties
+   - `ALLOWED_ORIGIN` = `https://vexoralabs05.github.io`
+4. Redeploy after adding environment variables.
+5. Copy the deployed function URL, normally `https://YOUR-PROJECT.vercel.app/api/crm`.
 
-- Never publish the Google Sheet or share it as "Anyone with the link".
-- Do not store passwords in Sheets.
-- Firebase Web config is a client config, not an Admin SDK credential. Restrict the API key by allowed APIs and HTTP referrers where applicable.
-- The Apps Script backend checks Firebase identity with the Identity Toolkit account lookup endpoint, then checks the private Users sheet for role and status.
-- The first release implements login, CEO role bootstrap, dashboard counts, customer CRUD and staff account creation. Invoices, payments, subscriptions, expenses, product CRUD, audit UI, and advanced permissions still need their next implementation pass.
-- Apps Script quotas and Sheets concurrency make this a small-business starter architecture, not an unlimited-scale database.
+### 3. Connect the GitHub Pages frontend
+
+1. Open `src/config.js` and replace `https://YOUR-VERCEL-PROJECT.vercel.app/api/crm` with the actual Vercel function URL.
+2. Commit the change to `main`.
+3. In GitHub → Settings → Pages, select Deploy from a branch → `main` → `/(root)`.
+4. In Firebase Authentication → Settings → Authorized domains, add `vexoralabs05.github.io`.
+5. Open the GitHub Pages URL and sign in with an approved, email-verified CRM account.
+
+## CEO accounts
+
+- Shenol: `shenolperera5@gmail.com` — `SUPER_ADMIN`
+- Thenul: `thenulvidusitha10@gmail.com` — `SUPER_ADMIN`
+
+Each CEO must create their Firebase account with their own email and verify it before CRM access.
+
+## Security
+
+- Never make the Google Sheet public.
+- Never commit `CRM_BRIDGE_SECRET`, Firebase Admin credentials, service-account keys, customer exports or passwords.
+- Firebase Web config is a public client config; restrict its API key by authorized domains/referrers and APIs where applicable.
+- Apps Script validates Firebase identity and checks the private Users sheet for role permissions.
+- This initial frontend release includes login, dashboard counts, customer CRUD and Super Admin staff-account creation. Other modules (products, invoices, payments, expenses, subscriptions) are next development stages.
+- Google Apps Script and Sheets quotas/concurrency make this a small-business starter CRM, not an unlimited-scale database.
