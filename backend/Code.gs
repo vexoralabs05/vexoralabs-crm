@@ -222,5 +222,5 @@ function countRows_(ss,name) {
 
 function logActivity_(userId,action,entity,entityId,details) {
   const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Activity_Logs");
-  sheet.appendRow([Utilities.getUuid(),userId,action,entity,entityId,new Date().toISOString(),details]);
+  sheet.appendRow([Utilities.getUuid(),userId,action,entity,entityId,details,new Date().toISOString()]);
 }
