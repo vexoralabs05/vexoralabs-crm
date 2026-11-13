@@ -27,6 +27,7 @@
     <label>Email</label><input id="email" type="email" autocomplete="username" placeholder="you@company.com">
     <label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Password">
     <div class="row"><button id="login">Sign in</button><button id="google" class="secondary">Continue with Google</button></div>
+    <button id="resetPassword" class="secondary" type="button">Forgot password?</button>
     <p id="authMsg" class="msg"></p>
     <details><summary>First-time CEO account setup</summary><p class="muted">Only the two pre-approved CEO email addresses can register here. Use your own email and choose your own strong password.</p>
       <label>Confirm password</label><input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat password">
@@ -57,7 +58,7 @@ import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,cr
 const firebaseConfig={apiKey:"AIzaSyDDG3GkMoTgMKxEwAu0osaDr-xg87IyQfU",authDomain:"vexora-labs-crm-798fe.firebaseapp.com",projectId:"vexora-labs-crm-798fe",storageBucket:"vexora-labs-crm-798fe.firebasestorage.app",messagingSenderId:"912708185959",appId:"1:912708185959:web:16875dd237ddda900d09c2"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),google=new GoogleAuthProvider();google.setCustomParameters({prompt:"select_account"});
 const $=id=>document.getElementById(id);let currentUser=null,token=null,customers=[];
-function callServer(fn,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(new Error(e.message||String(e)))[fn](...args)));}
+function callServer(fn,...args){return new Promise((resolve,reject)=>{const runner=google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(new Error(e.message||String(e))));runner[fn](...args);});}
 function msg(id,text,ok=false){$(id).textContent=text;$(id).className=ok?"msg success":"msg";}
 async function loadWorkspace(user){token=await user.getIdToken(true);const data=await callServer("getAppData",token);$("authCard").classList.add("hidden");$("dashboard").classList.remove("hidden");$("userBar").classList.remove("hidden");$("who").textContent=data.user.name;$("welcome").textContent="Welcome, "+data.user.name;$("userEmail").textContent=data.user.email;$("role").textContent=data.user.role;const labels={customers:"Customers",products:"Products",invoices:"Invoices",payments:"Payments",expenses:"Expenses",subscriptions:"Subscriptions"};$("stats").innerHTML=Object.entries(data.stats).map(([k,v])=>'<div class="stat">'+labels[k]+'<strong>'+v+'</strong></div>').join("");$("staffCard").classList.toggle("hidden",data.user.role!=="SUPER_ADMIN");await loadCustomers();}
 async function loadCustomers(){customers=await callServer("getCustomers",token);$("customers").innerHTML=customers.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.phone)+'</td><td>'+esc(c.email)+'</td><td>'+esc(c.company)+'</td><td><button class="secondary" data-edit="'+esc(c.customer_id)+'">Edit</button> <button class="secondary" data-delete="'+esc(c.customer_id)+'">Delete</button></td></tr>').join("");}
