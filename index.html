@@ -25,7 +25,15 @@
         <div id="userBar" class="user-bar" hidden><span id="who"></span><button class="secondary-button compact" id="logout">Sign out</button></div>
       </header>
 
-      <section id="authCard" class="login-panel">
+      <section id="authLoading" class="login-panel">
+        <div class="login-card" style="text-align:center">
+          <p class="eyebrow">VEXORA LABS / SECURE WORKSPACE</p>
+          <h2>Opening your workspace…</h2>
+          <p class="muted">Checking your saved secure session. Please wait.</p>
+          <span class="status-dot" aria-label="Loading"></span>
+        </div>
+      </section>
+      <section id="authCard" class="login-panel" hidden>
         <div class="login-card">
           <p class="eyebrow">MEMBER ACCESS</p>
           <h2>Welcome back</h2>
