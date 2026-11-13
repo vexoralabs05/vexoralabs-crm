@@ -7,8 +7,9 @@ Separate CRM application for Vexora Labs. It does not modify or integrate into t
 - Firebase Authentication: Google and Email/Password providers.
 - Google Sheets: private CRM database.
 - Google Apps Script: server-side access layer and role checks.
-- Apps Script HTML Service: hosts the CRM UI so browser requests use `google.script.run` rather than exposing the spreadsheet or relying on cross-origin API calls.
-- GitHub repository: source and version history only. Do not put credentials, service-account keys, customer exports, or passwords here.
+- Apps Script HTML Service: hosts the authenticated CRM UI and uses `google.script.run` for server calls.
+- GitHub Pages: serves the public CRM entry page and embeds the Apps Script CRM workspace. The Apps Script app remains the trusted UI/backend host; the GitHub page is a launcher shell, not a replacement backend.
+- GitHub repository: source and version history. Do not put credentials, service-account keys, customer exports, or passwords here.
 
 ## Initial CEO accounts
 
@@ -27,9 +28,10 @@ CEO accounts are created by each CEO using the first-time setup in the CRM app. 
    - Property: `FIREBASE_WEB_API_KEY`
    - Value: the Firebase Web API key from the Firebase web app config.
 6. Save. Run `bootstrapVexoraAdmins` once from the Apps Script editor and authorize it. It creates/updates the two CEO registry rows and ensures the CRM tabs exist without clearing data.
-7. Deploy → New deployment → Web app. Execute as **Me**. Restrict access to signed-in Google users if this is available for the intended users. Copy the deployment URL.
-8. In Firebase Authentication settings, add the deployed Apps Script host/domain to Authorized domains if Firebase requires it.
-9. Each CEO opens the deployed URL, enters their own approved email and chooses a unique password under **First-time CEO account setup**. Each verifies the email before signing in.
+7. In `doGet()`, retain `.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)` so the CRM can be displayed inside the GitHub Pages shell. Deploy → Manage deployments → Edit → New version → Deploy. Execute as **Me**. Copy the current deployment URL and keep it in the repository `index.html` iframe and fallback link.
+8. Enable GitHub Pages in repository Settings → Pages → Deploy from a branch → `main` → `/ (root)`. The public entry page is `https://vexoralabs05.github.io/vexoralabs-crm/` once Pages finishes publishing.
+9. In Firebase Authentication → Settings → Authorized domains, authorize the actual host shown in the browser during Firebase sign-in (for example, `script.google.com` or `script.googleusercontent.com` if the embedded app uses those origins). Do not add guessed domains; use the exact origin in the error.
+10. Each CEO opens the GitHub Pages URL or the fallback Apps Script link, enters their own approved email and chooses a unique password under **First-time CEO account setup**. Each verifies the email before signing in.
 
 ## Security notes
 
