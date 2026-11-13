@@ -1,8 +1,8 @@
 import {
-  signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
   sendEmailVerification, sendPasswordResetEmail, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { auth, googleProvider, authReady } from "./firebase.js";
+import { auth, authReady } from "./firebase.js";
 import { API_BASE_URL } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
@@ -40,7 +40,6 @@ async function api(action, payload = {}) {
   return result.data;
 }
 function setBusy(busy) {
-  $("googleSignIn").disabled = busy;
   $("emailSignIn").disabled = busy;
   $("emailSignIn").textContent = busy ? "Signing in…" : "Sign in";
 }
@@ -94,12 +93,6 @@ $("year").textContent = new Date().getFullYear();
 window.addEventListener("error", event => showMessage("message", "Application error: " + (event.message || "Unable to load CRM script.")));
 window.addEventListener("unhandledrejection", event => showMessage("message", "Initialization error: " + (event.reason?.message || String(event.reason || "Unknown error"))));
 
-$("googleSignIn").addEventListener("click", async () => {
-  setBusy(true); showMessage("message", "");
-  try { await signInWithPopup(auth, googleProvider); }
-  catch (error) { showMessage("message", friendlyError(error)); }
-  finally { setBusy(false); }
-});
 $("emailForm").addEventListener("submit", async event => {
   event.preventDefault(); setBusy(true); showMessage("message", "");
   try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); }
