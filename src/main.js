@@ -1,6 +1,6 @@
 import {
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  sendEmailVerification, sendPasswordResetEmail, onAuthStateChanged, signOut
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { auth, authReady } from "./firebase.js";
 import { API_BASE_URL } from "./config.js";
@@ -105,19 +105,7 @@ $("resetPassword").addEventListener("click", async () => {
   try { await sendPasswordResetEmail(auth, email); showMessage("message", "Password reset email sent.", true); }
   catch (error) { showMessage("message", friendlyError(error)); }
 });
-$("registerCeo").addEventListener("click", async () => {
-  const email = $("email").value.trim();
-  const password = $("password").value;
-  if (!email || password.length < 12 || password !== $("confirmPassword").value) {
-    return showMessage("message", "Enter your approved email and matching passwords (12+ characters).");
-  }
-  try {
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
-    await sendEmailVerification(credential.user);
-    await signOut(auth);
-    showMessage("message", "Verification email sent. Verify your email, then sign in.", true);
-  } catch (error) { showMessage("message", friendlyError(error)); }
-});
+
 $("logout").addEventListener("click", () => signOut(auth));
 $("refresh").addEventListener("click", () => loadWorkspace().catch(e => showMessage("customerMsg", e.message)));
 $("newCustomer").addEventListener("click", () => {
