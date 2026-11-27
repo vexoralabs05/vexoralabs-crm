@@ -11,7 +11,11 @@ let customers = [];
 let services = [];
 let saleCustomers = [];
 let cart = [];
-let recentInvoices = [];\nlet subscriptions = [];\nlet expenses = [];\nlet finance = null;\nlet teamMembers = [];
+let recentInvoices = [];
+let subscriptions = [];
+let expenses = [];
+let finance = null;
+let teamMembers = [];
 
 function showMessage(id, text, success = false) {
   const el = $(id);
@@ -149,10 +153,16 @@ async function loadWorkspace() {
   $("posNav").hidden=!canSell; $("servicesNav").hidden=!["SUPER_ADMIN","ADMIN","MANAGER"].includes(data.user.role);
   $("salesNav").hidden=!canSell;
   const canViewCustomers = ["SUPER_ADMIN","ADMIN","MANAGER","SALES"].includes(data.user.role);
-  $("customersNav").hidden = !canViewCustomers;\n  const canFinance=["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"].includes(data.user.role);\n  $("expensesNav").hidden=!canFinance;\n  $("subscriptionsNav").hidden=!canViewCustomers;
+  $("customersNav").hidden = !canViewCustomers;
+  const canFinance=["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"].includes(data.user.role);
+  $("expensesNav").hidden=!canFinance;
+  $("subscriptionsNav").hidden=!canViewCustomers;
   const labels = {customers:["Customers","♙"],products:["Products","▣"],invoices:["Invoices","▤"],payments:["Payments","↗"],expenses:["Expenses","◈"],subscriptions:["Subscriptions","∞"]};
   $("stats").innerHTML = Object.entries(data.stats).map(([key,value])=>{const item=labels[key]||[key,"•"];return `<article class="stat-card"><div class="stat-top"><span>${item[0]}</span><span class="stat-icon">${item[1]}</span></div><strong>${Number(value)||0}</strong></article>`;}).join("");
-  if (canSell) await loadPOSData();\n  if (canViewCustomers) await loadSubscriptions();\n  if (canFinance) await loadFinance();\n  if (data.user.role === "SUPER_ADMIN") await loadTeam();
+  if (canSell) await loadPOSData();
+  if (canViewCustomers) await loadSubscriptions();
+  if (canFinance) await loadFinance();
+  if (data.user.role === "SUPER_ADMIN") await loadTeam();
   if (canViewCustomers) {
     await loadCustomers();
   } else {
@@ -238,7 +248,12 @@ $("customers").addEventListener("click", async event => {
     $("customerEmail").value = c.email || "";
     $("customerCompany").value = c.company || "";
     $("customerAddress").value = c.address || "";
-    $("customerNotes").value = c.notes || "";\n    $("customerType").value = c.customer_type || "INDIVIDUAL";\n    $("internetProvider").value = c.internet_provider || "";\n    $("internetPackage").value = c.internet_package || "";\n    $("customerWhatsapp").value = c.whatsapp || "";\n    $("customerTelegram").value = c.telegram || "";
+    $("customerNotes").value = c.notes || "";
+    $("customerType").value = c.customer_type || "INDIVIDUAL";
+    $("internetProvider").value = c.internet_provider || "";
+    $("internetPackage").value = c.internet_package || "";
+    $("customerWhatsapp").value = c.whatsapp || "";
+    $("customerTelegram").value = c.telegram || "";
     $("customerForm").hidden = false;
   }
   if (deleteId && confirm("Delete this customer record?")) {
