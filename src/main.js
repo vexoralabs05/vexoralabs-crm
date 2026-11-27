@@ -11,7 +11,7 @@ let customers = [];
 let services = [];
 let saleCustomers = [];
 let cart = [];
-let recentInvoices = [];
+let recentInvoices = [];\nlet subscriptions = [];\nlet expenses = [];\nlet finance = null;\nlet teamMembers = [];
 
 function showMessage(id, text, success = false) {
   const el = $(id);
@@ -93,7 +93,7 @@ function escapeHtml(value) {
 }
 function renderCustomerRows() {
   const query = ($("customerSearch")?.value || "").trim().toLowerCase();
-  const filtered = customers.filter(c => [c.name,c.phone,c.email,c.company,c.customer_code].some(v => String(v || "").toLowerCase().includes(query)));
+  const filtered = customers.filter(c => [c.name,c.phone,c.email,c.company,c.customer_code,c.internet_provider,c.internet_package].some(v => String(v || "").toLowerCase().includes(query)));
   $("customerCount").textContent = `${filtered.length} of ${customers.length} customer records`;
   $("customers").replaceChildren(); $("overviewCustomerRows").replaceChildren();
   if (!filtered.length) {
@@ -149,10 +149,10 @@ async function loadWorkspace() {
   $("posNav").hidden=!canSell; $("servicesNav").hidden=!["SUPER_ADMIN","ADMIN","MANAGER"].includes(data.user.role);
   $("salesNav").hidden=!canSell;
   const canViewCustomers = ["SUPER_ADMIN","ADMIN","MANAGER","SALES"].includes(data.user.role);
-  $("customersNav").hidden = !canViewCustomers;
+  $("customersNav").hidden = !canViewCustomers;\n  const canFinance=["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"].includes(data.user.role);\n  $("expensesNav").hidden=!canFinance;\n  $("subscriptionsNav").hidden=!canViewCustomers;
   const labels = {customers:["Customers","♙"],products:["Products","▣"],invoices:["Invoices","▤"],payments:["Payments","↗"],expenses:["Expenses","◈"],subscriptions:["Subscriptions","∞"]};
   $("stats").innerHTML = Object.entries(data.stats).map(([key,value])=>{const item=labels[key]||[key,"•"];return `<article class="stat-card"><div class="stat-top"><span>${item[0]}</span><span class="stat-icon">${item[1]}</span></div><strong>${Number(value)||0}</strong></article>`;}).join("");
-  if (canSell) await loadPOSData();
+  if (canSell) await loadPOSData();\n  if (canViewCustomers) await loadSubscriptions();\n  if (canFinance) await loadFinance();
   if (canViewCustomers) {
     await loadCustomers();
   } else {
@@ -163,7 +163,7 @@ async function loadWorkspace() {
 function showView(viewId) {
   document.querySelectorAll(".view-panel").forEach(panel=>panel.hidden=panel.id!==viewId);
   document.querySelectorAll(".nav-item").forEach(item=>item.classList.toggle("active",item.dataset.view===viewId));
-  const labels={overview:["Overview","Dashboard"],posView:["New sale","Point of Sale"],servicesView:["Services","Service catalogue"],salesView:["Sales & invoices","Sales & invoices"],customersView:["Customers","Customers"],teamView:["Team access","Team access"]};
+  const labels={overview:["Overview","Dashboard"],posView:["New sale","Point of Sale"],servicesView:["Services","Service catalogue"],salesView:["Sales & invoices","Sales & invoices"],customersView:["Customers","Customers"],teamView:["Team access","Team access"],subscriptionsView:["VPN & subscriptions","VPN customer operations"],expensesView:["Expenses & finance","Finance overview"]};
   const item=labels[viewId]||labels.overview;$("pageName").textContent=item[0];$("pageTitle").textContent=item[1];
 }
 document.querySelectorAll(".nav-item").forEach(item=>item.addEventListener("click",()=>showView(item.dataset.view)));
@@ -238,7 +238,7 @@ $("customers").addEventListener("click", async event => {
     $("customerEmail").value = c.email || "";
     $("customerCompany").value = c.company || "";
     $("customerAddress").value = c.address || "";
-    $("customerNotes").value = c.notes || "";
+    $("customerNotes").value = c.notes || "";\n    $("customerType").value = c.customer_type || "INDIVIDUAL";\n    $("internetProvider").value = c.internet_provider || "";\n    $("internetPackage").value = c.internet_package || "";\n    $("customerWhatsapp").value = c.whatsapp || "";\n    $("customerTelegram").value = c.telegram || "";
     $("customerForm").hidden = false;
   }
   if (deleteId && confirm("Delete this customer record?")) {
@@ -282,4 +282,88 @@ function startAuthListener() {
 authReady.then(startAuthListener).catch(error => {
   showMessage("message", "Firebase initialization failed: " + friendlyError(error));
   startAuthListener();
+});
+
+
+// ================= VPN SUBSCRIPTIONS & FINANCE UI =================
+function dateLabel(value) {
+  if(!value) return "—";
+  const d=new Date(value); return Number.isNaN(d.getTime())?String(value):d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+}
+async function loadSubscriptions() {
+  subscriptions=await api("getSubscriptions");
+  renderSubscriptions();
+  const opts=saleCustomers.length?saleCustomers:customers;
+  $("subscriptionCustomer").innerHTML='<option value="">Select customer</option>'+opts.map(c=>'<option value="'+escapeHtml(c.customer_id)+'">'+escapeHtml(c.name)+' · '+escapeHtml(c.phone||"")+'</option>').join("");
+}
+function renderSubscriptions() {
+  const q=($("subscriptionSearch").value||"").trim().toLowerCase();
+  const rows=subscriptions.filter(s=>{const c=customers.find(x=>x.customer_id===s.customer_id)||{};return [c.name,s.order_id,s.plan,s.internet_package,s.data_limit,s.status].some(v=>String(v||"").toLowerCase().includes(q));});
+  $("subscriptionCount").textContent=rows.length+" of "+subscriptions.length+" subscription records";
+  $("subscriptionRows").innerHTML=rows.length?rows.map(s=>{
+    const c=customers.find(x=>x.customer_id===s.customer_id)||{};
+    const expired=s.expiry_date&&new Date(s.expiry_date+"T23:59:59")<new Date();
+    return '<tr><td><strong>'+escapeHtml(c.name||"Unknown customer")+'</strong><small>'+escapeHtml(s.order_id||"No order ID")+'</small></td><td>'+escapeHtml(s.plan)+'</td><td>'+escapeHtml(s.data_limit||"—")+' '+escapeHtml(s.data_unit||"")+'</td><td>'+escapeHtml(s.internet_package||"—")+'</td><td>'+dateLabel(s.expiry_date)+(expired?' <span class="role-badge">Expired</span>':"")+'</td><td><span class="role-badge">'+escapeHtml(expired?"EXPIRED":s.status)+'</span></td><td>'+(s.usage_link?'<a href="'+escapeHtml(s.usage_link)+'" target="_blank" rel="noopener noreferrer">Open usage</a>':"—")+'</td><td><button class="secondary-button compact" data-sub-edit="'+escapeHtml(s.subscription_id)+'">Edit</button></td></tr>';
+  }).join(""):'<tr><td colspan="8" class="empty-state">No subscription records found.</td></tr>';
+}
+function resetSubscriptionForm(){ $("subscriptionForm").reset(); $("subscriptionId").value=""; $("subscriptionForm").hidden=true; }
+$("newSubscription").addEventListener("click",()=>{ $("subscriptionForm").reset();$("subscriptionId").value="";$("subscriptionStart").value=new Date().toISOString().slice(0,10);$("subscriptionForm").hidden=false; });
+$("cancelSubscription").addEventListener("click",resetSubscriptionForm);
+$("subscriptionSearch").addEventListener("input",renderSubscriptions);
+$("subscriptionRows").addEventListener("click",event=>{
+  const id=event.target.closest("[data-sub-edit]")?.dataset.subEdit;if(!id)return;
+  const s=subscriptions.find(x=>x.subscription_id===id);if(!s)return;
+  $("subscriptionId").value=s.subscription_id;$("subscriptionCustomer").value=s.customer_id;$("subscriptionPlan").value=s.plan||"";
+  $("subscriptionOrder").value=s.order_id||"";$("subscriptionData").value=s.data_limit||"";$("subscriptionUnit").value=s.data_unit||"GB";
+  $("subscriptionInternet").value=s.internet_package||"";$("subscriptionStart").value=String(s.start_date||"").slice(0,10);
+  $("subscriptionExpiry").value=String(s.expiry_date||"").slice(0,10);$("subscriptionPrice").value=s.price||0;
+  $("subscriptionStatus").value=s.status||"ACTIVE";$("subscriptionUsage").value=s.usage_link||"";$("subscriptionNotes").value=s.notes||"";
+  $("subscriptionForm").hidden=false;
+});
+$("subscriptionForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await api("saveSubscription",{subscription_id:$("subscriptionId").value,customer_id:$("subscriptionCustomer").value,
+      plan:$("subscriptionPlan").value.trim(),order_id:$("subscriptionOrder").value.trim(),data_limit:$("subscriptionData").value.trim(),
+      data_unit:$("subscriptionUnit").value,internet_package:$("subscriptionInternet").value.trim(),
+      start_date:$("subscriptionStart").value,expiry_date:$("subscriptionExpiry").value,price:Number($("subscriptionPrice").value||0),
+      status:$("subscriptionStatus").value,usage_link:$("subscriptionUsage").value.trim(),notes:$("subscriptionNotes").value.trim()});
+    resetSubscriptionForm();showMessage("subscriptionMessage","Subscription saved successfully.",true);await loadSubscriptions();
+  }catch(err){showMessage("subscriptionMessage",err.message);}
+});
+$("importVpn").addEventListener("click",async()=>{
+  const btn=$("importVpn");btn.disabled=true;
+  try{const result=await api("importVpnSubscription",{text:$("vpnImportText").value});
+    showMessage("vpnImportMessage","Imported "+result.subscription.order_id+" for "+result.customer_name+".",true);
+    $("vpnImportText").value="";await loadCustomers();await loadSubscriptions();
+  }catch(err){showMessage("vpnImportMessage",err.message);}
+  finally{btn.disabled=false;}
+});
+$("clearVpnImport").addEventListener("click",()=>{$("vpnImportText").value="";showMessage("vpnImportMessage","");});
+async function loadFinance(){
+  const month=$("financeMonth").value||new Date().toISOString().slice(0,7);
+  $("financeMonth").value=month;
+  [finance,expenses]=await Promise.all([api("getFinanceData",{month}),api("getExpenses")]);
+  renderFinance();
+}
+function renderFinance(){
+  const cards=[["Revenue",finance.revenue],["Payments collected",finance.paid],["Expenses",finance.expenses],["Net result",finance.net],["Receivables",finance.receivables],["Invoices",finance.invoiceCount]];
+  $("financeStats").innerHTML=cards.map(([label,value])=>'<article class="stat-card"><div class="stat-top"><span>'+label+'</span></div><strong>'+(label==="Invoices"?Number(value||0):money(value))+'</strong></article>').join("");
+  const month=$("financeMonth").value;
+  const rows=expenses.filter(x=>String(x.expense_date||"").slice(0,7)===month);
+  $("expenseCount").textContent=rows.length+" records this month";
+  $("expenseRows").innerHTML=rows.length?rows.map(x=>'<tr><td>'+dateLabel(x.expense_date)+'</td><td>'+escapeHtml(x.category)+'</td><td>'+escapeHtml(x.description||"—")+'<small>'+escapeHtml(x.vendor||"")+'</small></td><td>'+escapeHtml(x.payment_method)+'</td><td>'+money(x.amount)+'</td></tr>').join(""):'<tr><td colspan="5" class="empty-state">No expenses recorded for this month.</td></tr>';
+}
+$("financeMonth").value=new Date().toISOString().slice(0,7);
+$("financeMonth").addEventListener("change",()=>loadFinance().catch(e=>showMessage("expenseMessage",e.message)));
+$("newExpense").addEventListener("click",()=>{$("expenseForm").reset();$("expenseDate").value=new Date().toISOString().slice(0,10);$("expenseForm").hidden=false;});
+$("cancelExpense").addEventListener("click",()=>$("expenseForm").hidden=true);
+$("expenseForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await api("saveExpense",{category:$("expenseCategory").value,amount:Number($("expenseAmount").value),expense_date:$("expenseDate").value,
+      payment_method:$("expenseMethod").value,vendor:$("expenseVendor").value.trim(),reference:$("expenseReference").value.trim(),
+      description:$("expenseDescription").value.trim()});
+    $("expenseForm").hidden=true;showMessage("expenseMessage","Expense recorded.",true);await loadFinance();
+  }catch(err){showMessage("expenseMessage",err.message);}
 });
