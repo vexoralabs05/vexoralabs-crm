@@ -23,7 +23,7 @@ Usage link: https://example.com/subscription/...
   The importer matches an existing customer by phone, email or name; otherwise it creates a customer using the name after the dash. Duplicate Order IDs are blocked.
 - Expense records, monthly finance summary, revenue, collected payments, expenses, net result and receivables.
 - Monthly Google Sheets ledgers: `Sales_YYYY_MM`, `Expenses_YYYY_MM`, and `Customer_Activity_YYYY_MM`.
-- System activity logs and role-checked backend methods.
+- System activity logs and role-checked backend methods.\n- CEO-only Google Sheets workbook snapshot backup, stored as backup tabs inside the same private spreadsheet.
 
 ## Architecture
 
@@ -89,9 +89,9 @@ The master tabs remain the canonical records: `Customers`, `Products`, `Invoices
 Monthly tabs are created automatically as records are written:
 - `Sales_YYYY_MM`
 - `Expenses_YYYY_MM`
-- `Customer_Activity_YYYY_MM`
+- `Customer_Activity_YYYY_MM`\n- `Customer_Records_YYYY_MM`
 
-Run `bootstrapVexoraAdmins()` again after replacing Apps Script code to migrate the existing sheet headers. Existing records are retained.
+Run `bootstrapVexoraAdmins()` again after replacing Apps Script code to migrate the existing sheet headers. Existing records are retained. CEO can create an additional snapshot backup from Team access; backup tabs remain inside the same Google Spreadsheet.
 
 ## Important operational notes
 
