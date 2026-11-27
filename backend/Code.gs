@@ -192,7 +192,9 @@ function saveCustomer(idToken, customer) {
   const row = headers.map(h=>record[h] ?? "");
   if (existingIndex>0) sheet.getRange(existingIndex+1,1,1,headers.length).setValues([row]);
   else sheet.appendRow(row);
-  logActivity_(actor.user_id,"SAVE","Customer",id,record.name);
+  appendMonthlyRecord_("Customer_Records",new Date(),CRM.headers.Customers.concat(["snapshot_at"]),headers.map(h=>record[h]??"").concat([now]));
+  appendMonthlyRecord_("Customer_Activity",new Date(),["activity_id","customer_id","activity_type","reference_id","details","created_by","created_at"],[Utilities.getUuid(),id,existingIndex>0?"CUSTOMER_UPDATED":"CUSTOMER_CREATED",id,record.name,actor.user_id,now]);
+  logActivity_(actor.user_id,existingIndex>0?"UPDATE":"CREATE","Customer",id,record.name);
   return record;
 }
 
