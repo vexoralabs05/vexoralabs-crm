@@ -1,355 +1,53 @@
-const CRM = {
-  spreadsheetId: "1nI6y0nrws_ZOonbHvlr4JJfHFE-r4UoIyPlE1kHJuuI",
-  projectId: "vexora-labs-crm-798fe",
-  admins: {
-    "shenolperera5@gmail.com": "Shenol",
-    "thenulvidusitha10@gmail.com": "Thenul"
-  },
-  headers: {
-    Users: ["user_id","auth_uid","name","email","role","status","created_at","updated_at"],
-    Customers: ["customer_id","customer_code","name","phone","email","address","company","notes","status","created_at","updated_at"],
-    Products: ["product_id","product_code","name","category","description","cost_price","selling_price","status","created_at","updated_at"],
-    Invoices: ["invoice_id","invoice_number","customer_id","invoice_date","due_date","subtotal","discount","tax","total","paid_amount","balance","status","created_at","updated_at"],
-    Invoice_Items: ["item_id","invoice_id","product_id","description","quantity","unit_price","discount","line_total"],
-    Payments: ["payment_id","invoice_id","customer_id","amount","payment_method","reference","payment_date","status","created_at"],
-    Expenses: ["expense_id","category","description","amount","payment_method","expense_date","reference","created_at"],
-    Subscriptions: ["subscription_id","customer_id","product_id","plan","start_date","expiry_date","price","status","notes","created_at","updated_at"],
-    Activity_Logs: ["log_id","user_id","action","entity","entity_id","details","timestamp"],
-    Settings: ["setting_id","setting_name","setting_value","description","updated_at"],
-    Sync_Logs: ["sync_id","operation","entity","record_id","sync_status","error_message","timestamp"]
+/**
+ * VEXORA Pro OS - Google Sheets schema bootstrap.
+ * Cloud writes are intentionally not exposed as a public API yet.
+ * Add Firebase/Auth or another verified identity layer before deployment.
+ */
+const VEXORA_OS = {
+  SPREADSHEET_ID: "ADD_GOOGLE_SHEET_ID",
+  HEADERS: {
+    Customers: ["customer_id","customer_code","name","type","phone","email","company","internet_provider","internet_package","telegram","address","notes","created_at","updated_at"],
+    Products: ["product_id","name","sku","division","category","description","price","cost","stock","track_stock","active"],
+    Subscriptions: ["subscription_id","customer_id","order_id","plan","data_limit","internet_package","start_date","expiry_date","price","status","usage_url","notes","created_at","updated_at"],
+    Sales: ["sale_id","invoice_no","customer_id","sale_date","subtotal","discount","total","paid","balance","payment_status","payment_method","due_date","items_json","created_at"],
+    Payments: ["payment_id","sale_id","amount","payment_date","payment_method","reference","notes"],
+    Expenses: ["expense_id","expense_date","category","division","description","vendor","payment_method","amount","reference","created_at"],
+    Activity_Logs: ["activity_id","timestamp","action","module","details"]
   }
 };
 
-// Hidden Apps Script iframe bridge. The CRM interface remains on GitHub Pages.
-function doGet() {
-  const bridgeHtml = `<!doctype html><html><head><meta charset="utf-8"></head><body>
-<script>
-const PARENT_ORIGIN = "https://vexoralabs05.github.io";
-let BRIDGE_CHANNEL = "";
-window.addEventListener("message", function(event) {
-  if (event.origin !== PARENT_ORIGIN) return;
-  const m = event.data || {};
-  if (m.type === "VEXORA_BRIDGE_INIT" && m.channel) {
-    BRIDGE_CHANNEL = String(m.channel);
-    window.top.postMessage({type:"VEXORA_BRIDGE_READY",channel:BRIDGE_CHANNEL}, PARENT_ORIGIN);
-    return;
+/** Run manually once to create the VEXORA Pro OS spreadsheet schema. */
+function setupVexoraProOS() {
+  if (VEXORA_OS.SPREADSHEET_ID === "ADD_GOOGLE_SHEET_ID") {
+    throw new Error("Set VEXORA_OS.SPREADSHEET_ID before running setup.");
   }
-  if (m.type !== "VEXORA_BRIDGE_REQUEST" || !m.requestId || !BRIDGE_CHANNEL || m.channel !== BRIDGE_CHANNEL) return;
-  const channel = BRIDGE_CHANNEL;
-  google.script.run
-    .withSuccessHandler(function(result) {
-      window.top.postMessage({type:"VEXORA_BRIDGE_RESULT",channel:channel,requestId:m.requestId,ok:true,data:result}, PARENT_ORIGIN);
-    })
-    .withFailureHandler(function(error) {
-      window.top.postMessage({type:"VEXORA_BRIDGE_RESULT",channel:channel,requestId:m.requestId,ok:false,error:error && error.message ? error.message : "Apps Script error"}, PARENT_ORIGIN);
-    })
-    .crmBridge(m.action, m.idToken, m.payload || {});
-});
-</script></body></html>`;
-  return HtmlService.createHtmlOutput(bridgeHtml).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-// Called only through the hidden bridge. Every action verifies the Firebase ID token and CRM role.
-function crmBridge(action, idToken, payload) {
-  payload = payload || {};
-  switch (action) {
-    case "getAppData": return getAppData(String(idToken || ""));
-    case "getCustomers": return getCustomers(String(idToken || ""));
-    case "getPOSData": return getPOSData(String(idToken || ""));
-    case "saveService": return saveService(String(idToken || ""), payload.service || payload);
-    case "createSale": return createSale(String(idToken || ""), payload);
-    case "saveCustomer": return saveCustomer(String(idToken || ""), payload.customer || payload);
-    case "deleteCustomer": return deleteCustomer(String(idToken || ""), payload.customerId);
-    case "createStaffAccount": return createStaffAccount(String(idToken || ""), payload);
-    default: throw new Error("Unknown CRM action.");
-  }
-}
-
-function doPost(e) {
-  try {
-    const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
-    const expected = PropertiesService.getScriptProperties().getProperty("CRM_BRIDGE_SECRET");
-    if (!expected || !body.secret || !constantTimeEqual_(String(body.secret), String(expected))) {
-      return jsonOutput_({ok:false,error:"Unauthorized API request."});
-    }
-    const token = String(body.idToken || "");
-    const payload = body.payload || {};
-    let data;
-    switch (body.action) {
-      case "getAppData": data = getAppData(token); break;
-      case "getCustomers": data = getCustomers(token); break;
-      case "getPOSData": data = getPOSData(token); break;
-      case "saveService": data = saveService(token, payload.service || payload); break;
-      case "createSale": data = createSale(token, payload); break;
-      case "saveCustomer": data = saveCustomer(token, payload.customer || payload); break;
-      case "deleteCustomer": data = deleteCustomer(token, payload.customerId); break;
-      case "createStaffAccount": data = createStaffAccount(token, payload); break;
-      default: throw new Error("Unknown CRM action.");
-    }
-    return jsonOutput_({ok:true,data:data === undefined ? null : data});
-  } catch (error) {
-    return jsonOutput_({ok:false,error:error && error.message ? error.message : "CRM API error."});
-  }
-}
-
-function jsonOutput_(value) {
-  return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON);
-}
-function constantTimeEqual_(a,b) {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i=0;i<a.length;i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return result === 0;
-}
-
-function bootstrapVexoraAdmins() {
-  const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
-  Object.keys(CRM.headers).forEach(name => ensureSheet_(ss, name, CRM.headers[name]));
-  const sheet = ss.getSheetByName("Users");
-  const data = sheet.getDataRange().getValues();
-  const header = data[0];
-  const col = Object.fromEntries(header.map((h,i)=>[h,i]));
-  const now = new Date().toISOString();
-  Object.entries(CRM.admins).forEach(([email,name]) => {
-    const index = data.findIndex((row,i)=>i>0 && String(row[col.email]).toLowerCase()===email);
-    if (index > 0) {
-      const rowNum = index + 1;
-      sheet.getRange(rowNum,col.name+1).setValue(name);
-      sheet.getRange(rowNum,col.role+1).setValue("SUPER_ADMIN");
-      if (!sheet.getRange(rowNum,col.status+1).getValue()) sheet.getRange(rowNum,col.status+1).setValue("PENDING_VERIFICATION");
-      sheet.getRange(rowNum,col.updated_at+1).setValue(now);
+  const ss = SpreadsheetApp.openById(VEXORA_OS.SPREADSHEET_ID);
+  Object.entries(VEXORA_OS.HEADERS).forEach(([name, headers]) => {
+    let sh = ss.getSheetByName(name);
+    if (!sh) sh = ss.insertSheet(name);
+    if (sh.getLastRow() === 0) {
+      sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sh.setFrozenRows(1);
+      sh.getRange(1, 1, 1, headers.length).setFontWeight("bold");
     } else {
-      sheet.appendRow([Utilities.getUuid(),"",name,email,"SUPER_ADMIN","PENDING_VERIFICATION",now,now]);
+      const current = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      const missing = headers.filter(h => !current.includes(h));
+      if (missing.length) sh.getRange(1, current.length + 1, 1, missing.length).setValues([missing]);
     }
   });
-  return "CEO account registry is ready.";
+  return "VEXORA Pro OS Sheets schema created. No public API has been deployed.";
 }
 
-function getAppData(idToken) {
-  const identity = verifyFirebaseToken_(idToken);
-  if (!identity.emailVerified) throw new Error("Verify your email address before accessing Vexora CRM.");
-  const user = findUser_(identity.email);
-  if (!user || user.status === "DISABLED") throw new Error("This account is not authorized for Vexora CRM.");
-  if (user.auth_uid && user.auth_uid !== identity.localId) throw new Error("Account identity mismatch. Contact a Super Admin.");
-  if (!["SUPER_ADMIN","ADMIN","MANAGER","SALES","ACCOUNTANT","STAFF"].includes(user.role)) throw new Error("This account has no valid CRM role.");
-  updateUserIdentity_(user.row, identity.localId);
-  const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
-  return {
-    user: { uid: identity.localId, email: identity.email, name: user.name, role: user.role },
-    stats: {
-      customers: countRows_(ss,"Customers"), products: countRows_(ss,"Products"),
-      invoices: countRows_(ss,"Invoices"), payments: countRows_(ss,"Payments"),
-      expenses: countRows_(ss,"Expenses"), subscriptions: countRows_(ss,"Subscriptions")
-    }
-  };
-}
-
-function getCustomers(idToken) {
-  requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
-  const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Customers");
-  const values = sheet.getDataRange().getValues();
-  const headers = values.shift();
-  return values.filter(r=>r[0]).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]])));
-}
-
-function saveCustomer(idToken, customer) {
-  const actor = requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
-  if (!customer || !String(customer.name || "").trim()) throw new Error("Customer name is required.");
-  const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Customers");
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0];
-  const col = Object.fromEntries(headers.map((h,i)=>[h,i]));
-  const now = new Date().toISOString();
-  const id = customer.customer_id || Utilities.getUuid();
-  const existingIndex = values.findIndex((r,i)=>i>0 && r[col.customer_id]===id);
-  const record = {
-    customer_id:id, customer_code:customer.customer_code || "CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),
-    name:String(customer.name).trim(), phone:String(customer.phone||"").trim(),
-    email:String(customer.email||"").trim(), address:String(customer.address||"").trim(),
-    company:String(customer.company||"").trim(), notes:String(customer.notes||"").trim(),
-    status:customer.status||"ACTIVE",
-    created_at:existingIndex>0?values[existingIndex][col.created_at]:now, updated_at:now
-  };
-  const row = headers.map(h=>record[h] ?? "");
-  if (existingIndex>0) sheet.getRange(existingIndex+1,1,1,headers.length).setValues([row]);
-  else sheet.appendRow(row);
-  logActivity_(actor.user_id,"SAVE","Customer",id,record.name);
-  return record;
-}
-
-function deleteCustomer(idToken, customerId) {
-  requireRole_(idToken, ["SUPER_ADMIN","ADMIN"]);
-  const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Customers");
-  const values = sheet.getDataRange().getValues();
-  const index = values.findIndex((r,i)=>i>0 && r[0]===customerId);
-  if (index<1) throw new Error("Customer not found.");
-  sheet.deleteRow(index+1);
-  logActivity_(findUser_(verifyFirebaseToken_(idToken).email).user_id,"DELETE","Customer",customerId,"Customer deleted");
-  return true;
-}
-
-
-function getPOSData(idToken) {
-  requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER","SALES","ACCOUNTANT"]);
-  const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
-  const read = name => {
-    const sh = ss.getSheetByName(name);
-    if (!sh || sh.getLastRow() < 2) return [];
-    const values = sh.getDataRange().getValues(), headers = values.shift();
-    return values.filter(r => r[0]).map(r => Object.fromEntries(headers.map((h,i)=>[h,r[i]])));
-  };
-  return { services: read("Products").filter(p => String(p.status).toUpperCase() !== "ARCHIVED"),
-    customers: read("Customers").filter(c => String(c.status).toUpperCase() !== "INACTIVE"),
-    invoices: read("Invoices").slice(-12).reverse(),
-    payments: read("Payments").slice(-12).reverse() };
-}
-
-function saveService(idToken, service) {
-  const actor = requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER"]);
-  if (!service || !String(service.name || "").trim()) throw new Error("Service name is required.");
-  const price = Number(service.selling_price);
-  const cost = Number(service.cost_price || 0);
-  if (!Number.isFinite(price) || price < 0 || !Number.isFinite(cost) || cost < 0) throw new Error("Enter valid LKR prices.");
-  const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Products");
-  const values = sheet.getDataRange().getValues(), headers = values[0], col = Object.fromEntries(headers.map((h,i)=>[h,i]));
-  const id = String(service.product_id || Utilities.getUuid());
-  const existing = values.findIndex((r,i)=>i>0 && String(r[col.product_id])===id);
-  const now = new Date().toISOString();
-  const record = {product_id:id,product_code:String(service.product_code || "SRV-"+Utilities.getUuid().slice(0,8).toUpperCase()),
-    name:String(service.name).trim(),category:String(service.category || "Digital Service").trim(),
-    description:String(service.description || "").trim(),cost_price:cost,selling_price:price,
-    status:String(service.status || "ACTIVE").toUpperCase(),created_at:existing>0?values[existing][col.created_at]:now,updated_at:now};
-  const row = headers.map(h=>record[h] ?? "");
-  if(existing>0) sheet.getRange(existing+1,1,1,headers.length).setValues([row]); else sheet.appendRow(row);
-  logActivity_(actor.user_id, existing>0?"UPDATE":"CREATE","Service",id,record.name);
-  return record;
-}
-
-function createSale(idToken, payload) {
-  const actor = requireRole_(idToken, ["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
-  const items = Array.isArray(payload.items) ? payload.items : [];
-  if (!items.length) throw new Error("Add at least one service to the sale.");
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
-    const products = ss.getSheetByName("Products"), invoices = ss.getSheetByName("Invoices");
-    const invoiceItems = ss.getSheetByName("Invoice_Items"), payments = ss.getSheetByName("Payments");
-    const pv = products.getDataRange().getValues(), ph = pv[0], pc = Object.fromEntries(ph.map((h,i)=>[h,i]));
-    let subtotal = 0;
-    const lines = items.map(item => {
-      const row = pv.find((r,i)=>i>0 && String(r[pc.product_id])===String(item.product_id));
-      if (!row || String(row[pc.status]).toUpperCase()!=="ACTIVE") throw new Error("A selected service is unavailable.");
-      const quantity = Number(item.quantity);
-      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1000) throw new Error("Invalid service quantity.");
-      const unit = Number(row[pc.selling_price]);
-      const lineTotal = Math.round(unit * quantity * 100) / 100;
-      subtotal += lineTotal;
-      return {product_id:row[pc.product_id],description:row[pc.name],quantity,unit_price:unit,discount:0,line_total:lineTotal};
-    });
-    const discount = Number(payload.discount || 0), tax = Number(payload.tax || 0);
-    if (!Number.isFinite(discount) || discount<0 || discount>subtotal || !Number.isFinite(tax) || tax<0) throw new Error("Invalid discount or tax.");
-    const total = Math.round((subtotal-discount+tax)*100)/100;
-    const paid = Number(payload.paid_amount || 0);
-    if (!Number.isFinite(paid) || paid<0 || paid>total) throw new Error("Payment must be between Rs. 0 and the invoice total.");
-    const customerId = String(payload.customer_id || "");
-    if (customerId) {
-      const cv=ss.getSheetByName("Customers").getDataRange().getValues();
-      if (!cv.slice(1).some(r=>String(r[0])===customerId)) throw new Error("Selected customer was not found.");
-    }
-    const now = new Date().toISOString(), invoiceId=Utilities.getUuid();
-    const invoiceNumber="VX-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMdd")+"-"+Utilities.getUuid().slice(0,5).toUpperCase();
-    const balance=Math.round((total-paid)*100)/100;
-    const status=balance<=0?"PAID":paid>0?"PARTIAL":"UNPAID";
-    invoices.appendRow([invoiceId,invoiceNumber,customerId,now.slice(0,10),now.slice(0,10),subtotal,discount,tax,total,paid,balance,status,now,now]);
-    lines.forEach(line=>invoiceItems.appendRow([Utilities.getUuid(),invoiceId,line.product_id,line.description,line.quantity,line.unit_price,line.discount,line.line_total]));
-    if(paid>0) payments.appendRow([Utilities.getUuid(),invoiceId,customerId,paid,String(payload.payment_method||"CASH").toUpperCase(),String(payload.reference||""),now.slice(0,10),"COMPLETED",now]);
-    logActivity_(actor.user_id,"CREATE","Invoice",invoiceId,invoiceNumber+" / LKR "+total);
-    return {invoice_id:invoiceId,invoice_number:invoiceNumber,subtotal,discount,tax,total,paid_amount:paid,balance,status,items:lines};
-  } finally { lock.releaseLock(); }
-}
-
-function createStaffAccount(idToken, payload) {
-  const actor = requireRole_(idToken, ["SUPER_ADMIN"]);
-  const email = String(payload.email||"").trim().toLowerCase();
-  const name = String(payload.name||"").trim();
-  const password = String(payload.password||"");
-  const role = String(payload.role||"STAFF").toUpperCase();
-  const allowed = ["ADMIN","MANAGER","SALES","ACCOUNTANT","STAFF"];
-  if (!email || !email.includes("@") || !name) throw new Error("Valid email and staff name are required.");
-  if (password.length<12) throw new Error("Use a temporary password of at least 12 characters.");
-  if (!allowed.includes(role)) throw new Error("Invalid staff role.");
-  const apiKey = getFirebaseApiKey_();
-  const response = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+encodeURIComponent(apiKey), {
-    method:"post",contentType:"application/json",muteHttpExceptions:true,
-    payload:JSON.stringify({email,password,returnSecureToken:true,displayName:name})
-  });
-  const result = JSON.parse(response.getContentText()||"{}");
-  if (result.error) throw new Error(result.error.message||"Could not create Firebase account.");
-  const now = new Date().toISOString();
-  SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users")
-    .appendRow([Utilities.getUuid(),result.localId,name,email,role,"PENDING_VERIFICATION",now,now]);
-  const verify = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key="+encodeURIComponent(apiKey), {
-    method:"post",contentType:"application/json",muteHttpExceptions:true,
-    payload:JSON.stringify({requestType:"VERIFY_EMAIL",idToken:result.idToken})
-  });
-  const verifyResult = JSON.parse(verify.getContentText()||"{}");
-  if (verify.getResponseCode()!==200 || verifyResult.error) throw new Error("Staff account created, but verification email could not be sent. Ask the staff member to use password reset or contact an administrator.");
-  logActivity_(actor.user_id,"CREATE","User",result.localId,email+" ("+role+")");
-  return {uid:result.localId,email,role,status:"PENDING_VERIFICATION"};
-}
-
-function requireRole_(idToken, roles) {
-  const identity = verifyFirebaseToken_(idToken);
-  if (!identity.emailVerified) throw new Error("Email verification is required.");
-  const user = findUser_(identity.email);
-  if (!user || user.status==="DISABLED" || (user.auth_uid && user.auth_uid!==identity.localId)) throw new Error("Account is not authorized.");
-  updateUserIdentity_(user.row,identity.localId);
-  if (!roles.includes(user.role)) throw new Error("You do not have permission to perform this action.");
-  return user;
-}
-
-function verifyFirebaseToken_(idToken) {
-  if (!idToken) throw new Error("Missing Firebase sign-in token.");
-  const apiKey = getFirebaseApiKey_();
-  const response = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key="+encodeURIComponent(apiKey), {
-    method:"post",contentType:"application/json",muteHttpExceptions:true,payload:JSON.stringify({idToken})
-  });
-  const result = JSON.parse(response.getContentText()||"{}");
-  if (response.getResponseCode()!==200 || !result.users || !result.users.length) throw new Error("Your login session is invalid. Sign in again.");
-  const u = result.users[0];
-  if (!u.localId || !u.email) throw new Error("Firebase identity is incomplete.");
-  return {localId:u.localId,email:String(u.email).toLowerCase(),emailVerified:!!u.emailVerified};
-}
-function getFirebaseApiKey_() {
-  const key = PropertiesService.getScriptProperties().getProperty("FIREBASE_WEB_API_KEY");
-  if (!key) throw new Error("Set FIREBASE_WEB_API_KEY in Apps Script Project Settings > Script Properties.");
-  return key;
-}
-function findUser_(email) {
-  const sheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users");
-  const values = sheet.getDataRange().getValues(), headers=values[0], col=Object.fromEntries(headers.map((h,i)=>[h,i]));
-  const index=values.findIndex((r,i)=>i>0&&String(r[col.email]).toLowerCase()===String(email).toLowerCase());
-  if(index<1)return null;
-  const row=values[index];
-  return {row:index+1,user_id:row[col.user_id],auth_uid:row[col.auth_uid],name:row[col.name],email:row[col.email],role:row[col.role],status:row[col.status]};
-}
-function updateUserIdentity_(row,uid) {
-  const sheet=SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users");
-  const headers=sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0],col=Object.fromEntries(headers.map((h,i)=>[h,i]));
-  const current=sheet.getRange(row,col.auth_uid+1).getValue();
-  if(current&&current!==uid)throw new Error("This email is linked to a different Firebase account.");
-  sheet.getRange(row,col.auth_uid+1).setValue(uid);
-  sheet.getRange(row,col.status+1).setValue("ACTIVE");
-  sheet.getRange(row,col.updated_at+1).setValue(new Date().toISOString());
-}
-function ensureSheet_(ss,name,headers) {
-  let sheet=ss.getSheetByName(name);if(!sheet)sheet=ss.insertSheet(name);
-  if(sheet.getLastRow()===0){sheet.getRange(1,1,1,headers.length).setValues([headers]);sheet.setFrozenRows(1);}
-  else{const current=sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];if(headers.some((h,i)=>current[i]!==h))throw new Error("Header mismatch in "+name+". No data changed.");}
-}
-function countRows_(ss,name){const sheet=ss.getSheetByName(name);return sheet?Math.max(0,sheet.getLastRow()-1):0;}
-function logActivity_(userId,action,entity,entityId,details) {
-  SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Activity_Logs")
-    .appendRow([Utilities.getUuid(),userId,action,entity,entityId,details,new Date().toISOString()]);
+/** Monthly ledgers can be generated later by the authenticated sync layer. */
+function createMonthlyLedger_(prefix, date, headers) {
+  const ss = SpreadsheetApp.openById(VEXORA_OS.SPREADSHEET_ID);
+  const month = Utilities.formatDate(date || new Date(), Session.getScriptTimeZone(), "yyyy_MM");
+  const name = prefix + "_" + month;
+  let sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.getRange(1,1,1,headers.length).setValues([headers]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
 }

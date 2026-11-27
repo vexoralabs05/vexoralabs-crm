@@ -1,42 +1,45 @@
-# Vexora Labs CRM
+# VEXORA Pro OS
 
-CRM interface hosted on GitHub Pages, Firebase Email/Password authentication, Google Apps Script backend bridge, and private Google Sheets database.
+A clean rebuild of the VEXORA CRM as a premium, responsive business control center.
 
-## Architecture
-- GitHub Pages: complete CRM UI, HTML/CSS/JavaScript and logo.
-- Firebase Authentication: Email + Password only.
-- Google Apps Script: hidden iframe bridge and secure backend methods.
-- Google Sheets: private CRM database.
+## Current build
 
-No Vercel, Cloudflare Worker, or public spreadsheet is required.
+- Dashboard with revenue, collections, expenses, net cash, monthly charts, division mix and upcoming VPN expiry alerts.
+- Customer CRM with customer type, phone, email, company, internet provider/package, Telegram, address and notes.
+- VPN subscription register with Order ID, customer, plan, quota, ISP package, start/expiry, price, status and usage URL.
+- VPN paste importer for the format `Order: U7EDAD — Niroshan`, `Package: HUTCH ZOOM 224/494/794`, `Data: 100 GB`, `Expires: 18 Dec 2026`, `Usage link: https://...`.
+- Product/service catalogue seeded with the VEXORA VPN plans, LK IP add-on and Canva Access.
+- POS sales with multiple line items, discount, invoice number, payment collection, outstanding balance and printable invoice.
+- Expense records by date, category, division, vendor and payment method.
+- Finance overview, cashflow, receivables, division breakdown and analytics.
+- Activity log, CSV exports, JSON backup/restore and business settings.
+- Responsive desktop and mobile layout.
 
-## Setup
+## Login
 
-### 1. Apps Script
-1. Open the Apps Script project connected to the **Vexora Labs CRM** spreadsheet.
-2. Replace all contents of `Code.gs` with `backend/Code.gs` from this repository.
-3. In Project Settings → Script Properties, keep/add `FIREBASE_WEB_API_KEY` with the Firebase Web API key.
-4. Run `bootstrapVexoraAdmins` once. Check execution log and confirm the Users sheet has both CEO rows with role `SUPER_ADMIN`.
-5. Deploy → New deployment → Web app. Execute as: Me. Who has access: Anyone.
-6. Copy the deployed Web App URL ending in `/exec`.
+There is deliberately **no login screen or login credentials** in this build. Authentication can be added as a final phase as requested.
 
-### 2. Configure GitHub frontend
-1. Open `src/config.js`.
-2. Set `APPS_SCRIPT_URL` to the deployed Apps Script `/exec` URL. Do not add a secret here.
-3. Commit to `main`.
-4. GitHub → Settings → Pages → Deploy from branch → `main` → `/(root)`.
+## Data storage status
 
-### 3. Firebase
-1. Authentication → Sign-in method: enable Email/Password.
-2. Authentication → Settings → Authorized domains: add `vexoralabs05.github.io`.
-3. Create the CEO Firebase Authentication users separately and verify both email addresses. Google Sheet rows alone do not create Firebase accounts.
+The current browser build is fully usable in the browser and saves records in that browser's local storage. This is useful for testing the CRM workflows, but it is not yet a shared multi-user cloud database. Export a JSON backup regularly.
 
-## CEO registry
-- shenolperera5@gmail.com — SUPER_ADMIN
-- thenulvidusitha10@gmail.com — SUPER_ADMIN
+The `backend/Code.gs` file contains the Google Sheets schema bootstrap. It creates the canonical Sheets tabs but deliberately does not expose a public write API. Do not deploy a publicly accessible Apps Script endpoint that can read/write customer data before authentication and authorization are added.
 
-## Security
-- Never make the Sheet public.
-- Do not store passwords in Sheets or GitHub.
-- Backend verifies Firebase ID tokens and checks role/status from the private Users sheet.
-- Apps Script web app is public to allow the iframe bridge, but CRM data methods require a valid Firebase identity and role.
+## Google Sheets setup (schema only)
+
+1. Create a private Google Spreadsheet.
+2. Copy its ID into `VEXORA_OS.SPREADSHEET_ID` in `backend/Code.gs`.
+3. Open Extensions → Apps Script and paste the file.
+4. Run `setupVexoraProOS()` once and authorize it.
+5. Keep the spreadsheet private. Cloud synchronization will be enabled in a later authenticated phase.
+
+## Run / publish
+
+The frontend is static HTML/CSS/JS and can be served locally or published with GitHub Pages from the repository root. No build step or package manager is required.
+
+## Important
+
+- No files from the old CRM UI are reused.
+- No authentication credentials or passwords are embedded.
+- Customer and subscription data is currently local to the browser.
+- Google Sheets sync and multi-user permissions are intentionally deferred until the final login/security phase.
