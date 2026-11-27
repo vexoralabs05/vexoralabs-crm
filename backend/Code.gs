@@ -183,7 +183,7 @@ function saveCustomer(idToken, customer) {
     customer_id:id, customer_code:customer.customer_code || "CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),
     name:String(customer.name).trim(), phone:String(customer.phone||"").trim(),
     email:String(customer.email||"").trim(), address:String(customer.address||"").trim(),
-    company:String(customer.company||"").trim(), notes:String(customer.notes||"").trim(),
+    company:String(customer.company||"").trim(), customer_type:String(customer.customer_type||"INDIVIDUAL").trim(),\n    internet_provider:String(customer.internet_provider||"").trim(), internet_package:String(customer.internet_package||"").trim(),\n    whatsapp:String(customer.whatsapp||"").trim(), telegram:String(customer.telegram||"").trim(), notes:String(customer.notes||"").trim(),
     status:customer.status||"ACTIVE",
     created_at:existingIndex>0?values[existingIndex][col.created_at]:now, updated_at:now
   };
@@ -428,8 +428,10 @@ function importVpnSubscription(idToken,payload) {
   const actor=requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
   const raw=String(payload.text||payload.raw||"").trim();
   if(!raw) throw new Error("Paste the VPN subscription details first.");
-  const get=(label)=>{const re=new RegExp("^\\s*"+label+"\\s*:\\s*(.*?)\\s*$","im");const m=raw.match(re);return m?m[1].trim():"";};
-  const order=get("Order"), customer=get("Customer|Name"), plan=get("Package"), data=get("Data"), expires=get("Expires"), link=get("Usage link");
+  const get=(label)=>{const re=new RegExp("^\\\\s*(?:"+label+")\\\\s*:\\\\s*(.*?)\\\\s*$","im");const m=raw.match(re);return m?m[1].trim():"";};
+  const orderRaw=get("Order"), orderMatch=orderRaw.match(/^([^—-]+)\\s*[—-]\\s*(.+)$/);
+  const order=orderMatch?orderMatch[1].trim():orderRaw, customer=get("Customer|Name")||(orderMatch?orderMatch[2].trim():"");
+  const internetPackage=get("Internet package|Package"), plan=get("VPN Plan")||"VPN "+(get("Data")||"subscription"), data=get("Data"), expires=get("Expires"), link=get("Usage link");
   if(!order||!plan||!expires||!link) throw new Error("Required fields: Order, Package, Expires and Usage link.");
   const email=get("Email"), phone=get("Phone");
   const dataMatch=data.match(/([0-9]+(?:\\.[0-9]+)?)\\s*(GB|MB|TB)?/i);
