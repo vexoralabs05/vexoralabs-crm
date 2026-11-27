@@ -529,7 +529,7 @@ function setUserStatus(idToken,payload) {
 function createWorkbookBackup(idToken) {
   const actor=requireRole_(idToken,["SUPER_ADMIN"]);
   const ss=ensureAllCrmSheets_();
-  const stamp=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMdd_HHmmss");
+  const stamp=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMdd_HHmmss")+"_"+Utilities.getUuid().slice(0,4);
   const sourceSheets=ss.getSheets().filter(sh=>!/^BKP_/.test(sh.getName()));
   const created=[];
   sourceSheets.forEach(source=>{
