@@ -160,11 +160,11 @@ async function loadWorkspace() {
   const labels = {customers:["Customers","♙"],products:["Products","▣"],invoices:["Invoices","▤"],payments:["Payments","↗"],expenses:["Expenses","◈"],subscriptions:["Subscriptions","∞"]};
   $("stats").innerHTML = Object.entries(data.stats).map(([key,value])=>{const item=labels[key]||[key,"•"];return `<article class="stat-card"><div class="stat-top"><span>${item[0]}</span><span class="stat-icon">${item[1]}</span></div><strong>${Number(value)||0}</strong></article>`;}).join("");
   if (canSell) await loadPOSData();
+  if (canViewCustomers) await loadCustomers();
   if (canViewCustomers) await loadSubscriptions();
   if (canFinance) await loadFinance();
   if (data.user.role === "SUPER_ADMIN") await loadTeam();
   if (canViewCustomers) {
-    await loadCustomers();
   } else {
     $("customerCount").textContent = "Customer access is restricted for your role.";
     $("overviewCustomerRows").innerHTML = '<tr><td colspan="4" class="empty-state">Customer data is restricted for your role.</td></tr>';
