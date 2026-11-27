@@ -12,8 +12,8 @@ const CRM = {
     Invoices: ["invoice_id","invoice_number","customer_id","invoice_date","due_date","subtotal","discount","tax","total","paid_amount","balance","status","created_at","updated_at"],
     Invoice_Items: ["item_id","invoice_id","product_id","description","quantity","unit_price","discount","line_total"],
     Payments: ["payment_id","invoice_id","customer_id","amount","payment_method","reference","payment_date","status","created_at"],
-    Expenses: ["expense_id","category","description","amount","payment_method","expense_date","reference","created_at"],
-    Subscriptions: ["subscription_id","customer_id","product_id","plan","start_date","expiry_date","price","status","notes","created_at","updated_at"],
+    Expenses: ["expense_id","category","description","amount","payment_method","expense_date","reference","vendor","receipt_url","created_at"],
+    Subscriptions: ["subscription_id","customer_id","product_id","plan","internet_package","data_limit","data_unit","usage_link","order_id","start_date","expiry_date","price","status","notes","created_at","updated_at"],
     Activity_Logs: ["log_id","user_id","action","entity","entity_id","details","timestamp"],
     Settings: ["setting_id","setting_name","setting_value","description","updated_at"],
     Sync_Logs: ["sync_id","operation","entity","record_id","sync_status","error_message","timestamp"]
@@ -60,7 +60,7 @@ function crmBridge(action, idToken, payload) {
     case "createSale": return createSale(String(idToken || ""), payload);
     case "saveCustomer": return saveCustomer(String(idToken || ""), payload.customer || payload);
     case "deleteCustomer": return deleteCustomer(String(idToken || ""), payload.customerId);
-    case "createStaffAccount": return createStaffAccount(String(idToken || ""), payload);
+    case "createStaffAccount": return createStaffAccount(String(idToken || ""), payload);\n    case "getSubscriptions": return getSubscriptions(String(idToken || ""));\n    case "saveSubscription": return saveSubscription(String(idToken || ""), payload.subscription || payload);\n    case "importVpnSubscription": return importVpnSubscription(String(idToken || ""), payload);\n    case "getExpenses": return getExpenses(String(idToken || ""));\n    case "saveExpense": return saveExpense(String(idToken || ""), payload.expense || payload);\n    case "getFinanceData": return getFinanceData(String(idToken || ""), payload);\n    case "getTeam": return getTeam(String(idToken || ""));\n    case "setUserStatus": return setUserStatus(String(idToken || ""), payload);
     default: throw new Error("Unknown CRM action.");
   }
 }
@@ -83,7 +83,7 @@ function doPost(e) {
       case "createSale": data = createSale(token, payload); break;
       case "saveCustomer": data = saveCustomer(token, payload.customer || payload); break;
       case "deleteCustomer": data = deleteCustomer(token, payload.customerId); break;
-      case "createStaffAccount": data = createStaffAccount(token, payload); break;
+      case "createStaffAccount": data = createStaffAccount(token, payload); break;\n      case "getSubscriptions": data = getSubscriptions(token); break;\n      case "saveSubscription": data = saveSubscription(token, payload.subscription || payload); break;\n      case "importVpnSubscription": data = importVpnSubscription(token, payload); break;\n      case "getExpenses": data = getExpenses(token); break;\n      case "saveExpense": data = saveExpense(token, payload.expense || payload); break;\n      case "getFinanceData": data = getFinanceData(token, payload); break;\n      case "getTeam": data = getTeam(token); break;\n      case "setUserStatus": data = setUserStatus(token, payload); break;
       default: throw new Error("Unknown CRM action.");
     }
     return jsonOutput_({ok:true,data:data === undefined ? null : data});
@@ -130,7 +130,7 @@ function getAppData(idToken) {
   if (!identity.emailVerified) throw new Error("Verify your email address before accessing Vexora CRM.");
   const user = findUser_(identity.email);
   if (!user || user.status === "DISABLED") throw new Error("This account is not authorized for Vexora CRM.");
-  if (user.auth_uid && user.auth_uid !== identity.localId) throw new Error("Account identity mismatch. Contact a Super Admin.");
+  if (user.auth_uid && user.auth_uid !== identity.localId) throw new Error("Account identity mismatch. Contact a Super Admin.");\n  if (user.status === "PENDING_VERIFICATION") throw new Error("Verify your email address before accessing Vexora CRM.");
   if (!["SUPER_ADMIN","ADMIN","MANAGER","SALES","ACCOUNTANT","STAFF"].includes(user.role)) throw new Error("This account has no valid CRM role.");
   updateUserIdentity_(user.row, identity.localId);
   const ss = SpreadsheetApp.openById(CRM.spreadsheetId);
@@ -261,7 +261,7 @@ function createSale(idToken, payload) {
     const invoiceNumber="VX-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMdd")+"-"+Utilities.getUuid().slice(0,5).toUpperCase();
     const balance=Math.round((total-paid)*100)/100;
     const status=balance<=0?"PAID":paid>0?"PARTIAL":"UNPAID";
-    invoices.appendRow([invoiceId,invoiceNumber,customerId,now.slice(0,10),now.slice(0,10),subtotal,discount,tax,total,paid,balance,status,now,now]);
+    invoices.appendRow([invoiceId,invoiceNumber,customerId,now.slice(0,10),now.slice(0,10),subtotal,discount,tax,total,paid,balance,status,now,now]);\n    appendMonthlyRecord_("Sales", new Date(), ["invoice_id","invoice_number","customer_id","invoice_date","subtotal","discount","tax","total","paid_amount","balance","status","created_by"], [invoiceId,invoiceNumber,customerId,now.slice(0,10),subtotal,discount,tax,total,paid,balance,status,actor.user_id]);
     lines.forEach(line=>invoiceItems.appendRow([Utilities.getUuid(),invoiceId,line.product_id,line.description,line.quantity,line.unit_price,line.discount,line.line_total]));
     if(paid>0) payments.appendRow([Utilities.getUuid(),invoiceId,customerId,paid,String(payload.payment_method||"CASH").toUpperCase(),String(payload.reference||""),now.slice(0,10),"COMPLETED",now]);
     logActivity_(actor.user_id,"CREATE","Invoice",invoiceId,invoiceNumber+" / LKR "+total);
@@ -278,7 +278,7 @@ function createStaffAccount(idToken, payload) {
   const allowed = ["ADMIN","MANAGER","SALES","ACCOUNTANT","STAFF"];
   if (!email || !email.includes("@") || !name) throw new Error("Valid email and staff name are required.");
   if (password.length<12) throw new Error("Use a temporary password of at least 12 characters.");
-  if (!allowed.includes(role)) throw new Error("Invalid staff role.");
+  if (!allowed.includes(role)) throw new Error("Invalid staff role.");\n  const usersSheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users");\n  const users = usersSheet.getDataRange().getValues();\n  const userHeaders = users[0], userCols = Object.fromEntries(userHeaders.map((h,i)=>[h,i]));\n  if (users.slice(1).some(r => String(r[userCols.email]).toLowerCase() === email)) throw new Error("An account with this email already exists.");\n  if (role === "ADMIN" && users.slice(1).some(r => String(r[userCols.role]).toUpperCase() === "ADMIN" && String(r[userCols.status]).toUpperCase() !== "DISABLED")) throw new Error("Only one active Admin account is allowed. Disable the current Admin before creating another.");
   const apiKey = getFirebaseApiKey_();
   const response = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+encodeURIComponent(apiKey), {
     method:"post",contentType:"application/json",muteHttpExceptions:true,
@@ -352,4 +352,137 @@ function countRows_(ss,name){const sheet=ss.getSheetByName(name);return sheet?Ma
 function logActivity_(userId,action,entity,entityId,details) {
   SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Activity_Logs")
     .appendRow([Utilities.getUuid(),userId,action,entity,entityId,details,new Date().toISOString()]);
+}
+
+
+// ================= VEXORA CLOUD CONTROL CENTER MODULES =================
+function ensureAllCrmSheets_() {
+  const ss=SpreadsheetApp.openById(CRM.spreadsheetId);
+  Object.keys(CRM.headers).forEach(name=>ensureSheet_(ss,name,CRM.headers[name]));
+  return ss;
+}
+function appendMonthlyRecord_(prefix,date,headers,row) {
+  const ss=SpreadsheetApp.openById(CRM.spreadsheetId);
+  const month=Utilities.formatDate(date,Session.getScriptTimeZone(),"yyyy_MM");
+  const sh=ensureSheet_(ss,prefix+"_"+month,headers);
+  sh.appendRow(row);
+  return sh.getName();
+}
+function getSubscriptions(idToken) {
+  requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
+  const ss=ensureAllCrmSheets_(), sh=ss.getSheetByName("Subscriptions");
+  const vals=sh.getDataRange().getValues(), headers=vals.shift();
+  return vals.filter(r=>r[0]).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]])));
+}
+function saveSubscription(idToken,sub) {
+  const actor=requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
+  if(!sub||!sub.customer_id) throw new Error("Select a customer for this subscription.");
+  const ss=ensureAllCrmSheets_(), sh=ss.getSheetByName("Subscriptions");
+  const customers=ss.getSheetByName("Customers").getDataRange().getValues();
+  if(!customers.slice(1).some(r=>String(r[0])===String(sub.customer_id))) throw new Error("Customer not found.");
+  const values=sh.getDataRange().getValues(), headers=values[0], col=Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const id=String(sub.subscription_id||Utilities.getUuid()), index=values.findIndex((r,i)=>i>0&&String(r[col.subscription_id])===id);
+  const now=new Date().toISOString(), expiry=String(sub.expiry_date||"");
+  const record={subscription_id:id,customer_id:String(sub.customer_id),product_id:String(sub.product_id||""),plan:String(sub.plan||"VPN").trim(),
+    internet_package:String(sub.internet_package||"").trim(),data_limit:String(sub.data_limit||"").trim(),data_unit:String(sub.data_unit||"GB").trim(),
+    usage_link:String(sub.usage_link||"").trim(),order_id:String(sub.order_id||"").trim(),
+    start_date:String(sub.start_date||now.slice(0,10)),expiry_date:expiry,price:Number(sub.price||0),
+    status:String(sub.status||"ACTIVE").toUpperCase(),notes:String(sub.notes||"").trim(),
+    created_at:index>0?values[index][col.created_at]:now,updated_at:now};
+  if(!Number.isFinite(record.price)||record.price<0) throw new Error("Enter a valid subscription price.");
+  if(record.usage_link && !/^https:\/\//i.test(record.usage_link)) throw new Error("Usage link must start with https://.");
+  const row=headers.map(h=>record[h]??"");
+  if(index>0) sh.getRange(index+1,1,1,headers.length).setValues([row]); else sh.appendRow(row);
+  appendMonthlyRecord_("Customer_Activity",new Date(),["activity_id","customer_id","activity_type","reference_id","details","created_by","created_at"],
+    [Utilities.getUuid(),record.customer_id,index>0?"SUBSCRIPTION_UPDATED":"SUBSCRIPTION_CREATED",id,record.plan+" / "+record.data_limit+" "+record.data_unit,actor.user_id,now]);
+  logActivity_(actor.user_id,index>0?"UPDATE":"CREATE","Subscription",id,record.plan+" "+record.order_id);
+  return record;
+}
+function importVpnSubscription(idToken,payload) {
+  const actor=requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","SALES"]);
+  const raw=String(payload.text||payload.raw||"").trim();
+  if(!raw) throw new Error("Paste the VPN subscription details first.");
+  const get=(label)=>{const re=new RegExp("^\\s*"+label+"\\s*:\\s*(.*?)\\s*$","im");const m=raw.match(re);return m?m[1].trim():"";};
+  const order=get("Order"), customer=get("Customer|Name"), plan=get("Package"), data=get("Data"), expires=get("Expires"), link=get("Usage link");
+  if(!order||!plan||!expires||!link) throw new Error("Required fields: Order, Package, Expires and Usage link.");
+  const email=get("Email"), phone=get("Phone"), internetPackage=get("Internet package");
+  const dataMatch=data.match(/([0-9]+(?:\\.[0-9]+)?)\\s*(GB|MB|TB)?/i);
+  const limit=dataMatch?dataMatch[1]:data, unit=dataMatch?(dataMatch[2]||"GB").toUpperCase():"GB";
+  const ss=ensureAllCrmSheets_(), sh=ss.getSheetByName("Subscriptions"), rows=sh.getDataRange().getValues();
+  const h=rows[0], c=Object.fromEntries(h.map((x,i)=>[x,i]));
+  if(rows.slice(1).some(r=>String(r[c.order_id]).toLowerCase()===order.toLowerCase())) throw new Error("This Order ID already exists. Duplicate import blocked.");
+  let customerRow=null, customerId="";
+  if(phone) customerRow=ss.getSheetByName("Customers").getDataRange().getValues().slice(1).find(r=>String(r[3]).replace(/\\D/g,"")===phone.replace(/\\D/g,""));
+  if(!customerRow&&email) customerRow=ss.getSheetByName("Customers").getDataRange().getValues().slice(1).find(r=>String(r[4]).toLowerCase()===email.toLowerCase());
+  if(!customerRow&&customer) customerRow=ss.getSheetByName("Customers").getDataRange().getValues().slice(1).find(r=>String(r[2]).toLowerCase()===customer.toLowerCase());
+  if(customerRow) customerId=String(customerRow[0]);
+  else {
+    if(!customer) throw new Error("Customer not found. Add a Customer/Name field or create the customer first.");
+    const now=new Date().toISOString(); customerId=Utilities.getUuid();
+    ss.getSheetByName("Customers").appendRow([customerId,"CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),customer,phone,email,"","","Imported from VPN order","ACTIVE",now,now]);
+  }
+  const record=saveSubscriptionInternal_(ss,{subscription_id:Utilities.getUuid(),customer_id:customerId,plan,data_limit:limit,data_unit:unit,
+    internet_package:internetPackage,usage_link:link,order_id:order,expiry_date:expires,start_date:new Date().toISOString().slice(0,10),status:"ACTIVE",notes:"Imported from VPN creation details."},actor.user_id);
+  return {subscription:record,customer_id:customerId,customer_name:customer||"Existing customer"};
+}
+function saveSubscriptionInternal_(ss,sub,userId) {
+  const sh=ss.getSheetByName("Subscriptions"), values=sh.getDataRange().getValues(), headers=values[0], col=Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const now=new Date().toISOString(), id=sub.subscription_id||Utilities.getUuid();
+  const record={subscription_id:id,customer_id:sub.customer_id,product_id:sub.product_id||"",plan:sub.plan||"VPN",internet_package:sub.internet_package||"",
+    data_limit:sub.data_limit||"",data_unit:sub.data_unit||"GB",usage_link:sub.usage_link||"",order_id:sub.order_id||"",
+    start_date:sub.start_date||now.slice(0,10),expiry_date:sub.expiry_date||"",price:Number(sub.price||0),status:sub.status||"ACTIVE",
+    notes:sub.notes||"",created_at:now,updated_at:now};
+  sh.appendRow(headers.map(h=>record[h]??""));
+  appendMonthlyRecord_("Customer_Activity",new Date(),["activity_id","customer_id","activity_type","reference_id","details","created_by","created_at"],
+    [Utilities.getUuid(),record.customer_id,"VPN_IMPORTED",id,record.order_id+" / "+record.data_limit+" "+record.data_unit,userId,now]);
+  logActivity_(userId,"IMPORT","VPN Subscription",id,record.order_id);
+  return record;
+}
+function getExpenses(idToken) {
+  requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"]);
+  const ss=ensureAllCrmSheets_(), sh=ss.getSheetByName("Expenses"), vals=sh.getDataRange().getValues(), headers=vals.shift();
+  return vals.filter(r=>r[0]).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]]))).reverse();
+}
+function saveExpense(idToken,expense) {
+  const actor=requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"]);
+  const amount=Number(expense.amount), date=String(expense.expense_date||new Date().toISOString().slice(0,10));
+  if(!String(expense.category||"").trim()||!Number.isFinite(amount)||amount<=0) throw new Error("Enter an expense category and a positive amount.");
+  const ss=ensureAllCrmSheets_(), sh=ss.getSheetByName("Expenses"), id=Utilities.getUuid(), now=new Date().toISOString();
+  const record={expense_id:id,category:String(expense.category).trim(),description:String(expense.description||"").trim(),amount,
+    payment_method:String(expense.payment_method||"CASH").toUpperCase(),expense_date:date,reference:String(expense.reference||"").trim(),
+    vendor:String(expense.vendor||"").trim(),receipt_url:String(expense.receipt_url||"").trim(),created_at:now};
+  sh.appendRow(CRM.headers.Expenses.map(h=>record[h]??""));
+  appendMonthlyRecord_("Expenses",new Date(date+"T12:00:00"),["expense_id","category","description","amount","payment_method","expense_date","reference","vendor","receipt_url","created_by","created_at"],
+    [id,record.category,record.description,amount,record.payment_method,date,record.reference,record.vendor,record.receipt_url,actor.user_id,now]);
+  logActivity_(actor.user_id,"CREATE","Expense",id,record.category+" / LKR "+amount);
+  return record;
+}
+function getFinanceData(idToken,payload) {
+  requireRole_(idToken,["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"]);
+  const ss=ensureAllCrmSheets_(), month=String(payload.month||Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyy-MM"));
+  const [year,mm]=month.split("-"), prefix=year+"_"+mm;
+  const read=(name)=>{const sh=ss.getSheetByName(name);if(!sh||sh.getLastRow()<2)return [];const v=sh.getDataRange().getValues(),h=v.shift();return v.filter(r=>r[0]).map(r=>Object.fromEntries(h.map((x,i)=>[x,r[i]])));};
+  const invoices=read("Invoices").filter(x=>String(x.invoice_date||"").slice(0,7)===month);
+  const expenses=read("Expenses").filter(x=>String(x.expense_date||"").slice(0,7)===month);
+  const revenue=invoices.reduce((n,x)=>n+Number(x.total||0),0), paid=invoices.reduce((n,x)=>n+Number(x.paid_amount||0),0);
+  const expenseTotal=expenses.reduce((n,x)=>n+Number(x.amount||0),0);
+  return {month,revenue,paid,expenses:expenseTotal,net:revenue-expenseTotal,receivables:invoices.reduce((n,x)=>n+Number(x.balance||0),0),invoiceCount:invoices.length,expenseCount:expenses.length,invoices,expenseItems:expenses};
+}
+function getTeam(idToken) {
+  requireRole_(idToken,["SUPER_ADMIN"]);
+  const sh=ensureAllCrmSheets_().getSheetByName("Users"), v=sh.getDataRange().getValues(), h=v.shift();
+  return v.filter(r=>r[0]).map(r=>{const o=Object.fromEntries(h.map((x,i)=>[x,r[i]]));delete o.auth_uid;return o;});
+}
+function setUserStatus(idToken,payload) {
+  const actor=requireRole_(idToken,["SUPER_ADMIN"]);
+  const email=String(payload.email||"").toLowerCase(), status=String(payload.status||"").toUpperCase();
+  if(!email||!["ACTIVE","DISABLED"].includes(status)) throw new Error("Invalid team account update.");
+  if(Object.keys(CRM.admins).some(x=>x===email)) throw new Error("CEO accounts cannot be disabled from this screen.");
+  const sh=ensureAllCrmSheets_().getSheetByName("Users"),v=sh.getDataRange().getValues(),h=v[0],c=Object.fromEntries(h.map((x,i)=>[x,i]));
+  const idx=v.findIndex((r,i)=>i>0&&String(r[c.email]).toLowerCase()===email);
+  if(idx<1) throw new Error("Team member not found.");
+  if(String(v[idx][c.role]).toUpperCase()==="ADMIN"&&status==="DISABLED") { /* one Admin slot becomes available */ }
+  sh.getRange(idx+1,c.status+1).setValue(status);sh.getRange(idx+1,c.updated_at+1).setValue(new Date().toISOString());
+  logActivity_(actor.user_id,"UPDATE","User",v[idx][c.user_id],email+" -> "+status);
+  return {email,status};
 }
