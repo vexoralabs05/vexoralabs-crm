@@ -458,7 +458,7 @@ function importVpnSubscription(idToken,payload) {
   else {
     if(!customer) throw new Error("Customer not found. Add a Customer/Name field or create the customer first.");
     const now=new Date().toISOString(); customerId=Utilities.getUuid();
-    ss.getSheetByName("Customers").appendRow(CRM.headers.Customers.map((h)=>({customer_id:customerId,customer_code:"CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),name:customer,phone,email,internet_provider:get("Internet provider"),internet_package:internetPackage,notes:"Imported from VPN order",status:"ACTIVE",created_at:now,updated_at:now}[h]||"")));
+    const customerSheet=ss.getSheetByName("Customers");\n    const newCustomer={customer_id:customerId,customer_code:"CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),name:customer,phone,email,internet_provider:get("Internet provider"),internet_package:internetPackage,notes:"Imported from VPN order",status:"ACTIVE",created_at:now,updated_at:now};\n    const customerHeaders=customerSheet.getRange(1,1,1,customerSheet.getLastColumn()).getValues()[0];\n    customerSheet.appendRow(customerHeaders.map(h=>newCustomer[h]??""));
   }
   const record=saveSubscriptionInternal_(ss,{subscription_id:Utilities.getUuid(),customer_id:customerId,plan,data_limit:limit,data_unit:unit,
     internet_package:internetPackage,usage_link:link,order_id:order,expiry_date:expires,start_date:new Date().toISOString().slice(0,10),status:"ACTIVE",notes:"Imported from VPN creation details."},actor.user_id);
