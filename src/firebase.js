@@ -9,7 +9,7 @@ import {
 // Firebase Web configuration is a public client configuration, not a server secret.
 // Apply HTTP-referrer restrictions to the API key before deploying the public site.
 const firebaseConfig = {
-  apiKey: "U",
+  apiKey: "AIzaSyDDG3GkMoTgMKxEwAu0osaDr-xg87IyQfU",
   authDomain: "vexora-labs-crm-798fe.firebaseapp.com",
   projectId: "vexora-labs-crm-798fe",
   storageBucket: "vexora-labs-crm-798fe.firebasestorage.app",
