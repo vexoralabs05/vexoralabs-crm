@@ -299,29 +299,34 @@ function createStaffAccount(idToken, payload) {
   if (!email || !email.includes("@") || !name) throw new Error("Valid email and staff name are required.");
   if (password.length<12) throw new Error("Use a temporary password of at least 12 characters.");
   if (!allowed.includes(role)) throw new Error("Invalid staff role.");
-  const usersSheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users");
-  const users = usersSheet.getDataRange().getValues();
-  const userHeaders = users[0], userCols = Object.fromEntries(userHeaders.map((h,i)=>[h,i]));
-  if (users.slice(1).some(r => String(r[userCols.email]).toLowerCase() === email)) throw new Error("An account with this email already exists.");
-  if (role === "ADMIN" && users.slice(1).some(r => String(r[userCols.role]).toUpperCase() === "ADMIN" && String(r[userCols.status]).toUpperCase() !== "DISABLED")) throw new Error("Only one active Admin account is allowed. Disable the current Admin before creating another.");
-  const apiKey = getFirebaseApiKey_();
-  const response = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+encodeURIComponent(apiKey), {
-    method:"post",contentType:"application/json",muteHttpExceptions:true,
-    payload:JSON.stringify({email,password,returnSecureToken:true,displayName:name})
-  });
-  const result = JSON.parse(response.getContentText()||"{}");
-  if (result.error) throw new Error(result.error.message||"Could not create Firebase account.");
-  const now = new Date().toISOString();
-  SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users")
-    .appendRow([Utilities.getUuid(),result.localId,name,email,role,"PENDING_VERIFICATION",now,now]);
-  const verify = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key="+encodeURIComponent(apiKey), {
-    method:"post",contentType:"application/json",muteHttpExceptions:true,
-    payload:JSON.stringify({requestType:"VERIFY_EMAIL",idToken:result.idToken})
-  });
-  const verifyResult = JSON.parse(verify.getContentText()||"{}");
-  if (verify.getResponseCode()!==200 || verifyResult.error) throw new Error("Staff account created, but verification email could not be sent. Ask the staff member to use password reset or contact an administrator.");
-  logActivity_(actor.user_id,"CREATE","User",result.localId,email+" ("+role+")");
-  return {uid:result.localId,email,role,status:"PENDING_VERIFICATION"};
+  const lock=LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const usersSheet = SpreadsheetApp.openById(CRM.spreadsheetId).getSheetByName("Users");
+    const users = usersSheet.getDataRange().getValues();
+    const userHeaders = users[0], userCols = Object.fromEntries(userHeaders.map((h,i)=>[h,i]));
+    if (users.slice(1).some(r => String(r[userCols.email]).toLowerCase() === email)) throw new Error("An account with this email already exists.");
+    if (role === "ADMIN" && users.slice(1).some(r => String(r[userCols.role]).toUpperCase() === "ADMIN" && String(r[userCols.status]).toUpperCase() !== "DISABLED")) throw new Error("Only one active Admin account is allowed. Disable the current Admin before creating another.");
+    const apiKey = getFirebaseApiKey_();
+    const response = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+encodeURIComponent(apiKey), {
+      method:"post",contentType:"application/json",muteHttpExceptions:true,
+      payload:JSON.stringify({email,password,returnSecureToken:true,displayName:name})
+    });
+    const result = JSON.parse(response.getContentText()||"{}");
+    if (response.getResponseCode()!==200 || result.error || !result.localId) throw new Error((result.error&&result.error.message)||"Could not create Firebase account.");
+    const now = new Date().toISOString();
+    usersSheet.appendRow([Utilities.getUuid(),result.localId,name,email,role,"PENDING_VERIFICATION",now,now]);
+    const verify = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key="+encodeURIComponent(apiKey), {
+      method:"post",contentType:"application/json",muteHttpExceptions:true,
+      payload:JSON.stringify({requestType:"VERIFY_EMAIL",idToken:result.idToken})
+    });
+    const verifyResult = JSON.parse(verify.getContentText()||"{}");
+    if (verify.getResponseCode()!==200 || verifyResult.error) throw new Error("Account created, but verification email could not be sent. Use Firebase Console to send a verification email.");
+    logActivity_(actor.user_id,"CREATE","User",result.localId,email+" ("+role+")");
+    return {uid:result.localId,email,role,status:"PENDING_VERIFICATION"};
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function requireRole_(idToken, roles) {
