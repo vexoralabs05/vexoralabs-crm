@@ -152,7 +152,7 @@ async function loadWorkspace() {
   $("customersNav").hidden = !canViewCustomers;\n  const canFinance=["SUPER_ADMIN","ADMIN","MANAGER","ACCOUNTANT"].includes(data.user.role);\n  $("expensesNav").hidden=!canFinance;\n  $("subscriptionsNav").hidden=!canViewCustomers;
   const labels = {customers:["Customers","♙"],products:["Products","▣"],invoices:["Invoices","▤"],payments:["Payments","↗"],expenses:["Expenses","◈"],subscriptions:["Subscriptions","∞"]};
   $("stats").innerHTML = Object.entries(data.stats).map(([key,value])=>{const item=labels[key]||[key,"•"];return `<article class="stat-card"><div class="stat-top"><span>${item[0]}</span><span class="stat-icon">${item[1]}</span></div><strong>${Number(value)||0}</strong></article>`;}).join("");
-  if (canSell) await loadPOSData();\n  if (canViewCustomers) await loadSubscriptions();\n  if (canFinance) await loadFinance();
+  if (canSell) await loadPOSData();\n  if (canViewCustomers) await loadSubscriptions();\n  if (canFinance) await loadFinance();\n  if (data.user.role === "SUPER_ADMIN") await loadTeam();
   if (canViewCustomers) {
     await loadCustomers();
   } else {
@@ -366,4 +366,22 @@ $("expenseForm").addEventListener("submit",async e=>{
       description:$("expenseDescription").value.trim()});
     $("expenseForm").hidden=true;showMessage("expenseMessage","Expense recorded.",true);await loadFinance();
   }catch(err){showMessage("expenseMessage",err.message);}
+});
+
+async function loadTeam(){
+  teamMembers=await api("getTeam");
+  $("teamRows").innerHTML=teamMembers.map(u=>{
+    const protectedCeo=u.role==="SUPER_ADMIN";
+    const action=protectedCeo?"Protected":(u.status==="DISABLED"?"<button class=\"secondary-button compact\" data-user-enable=\""+escapeHtml(u.email)+"\">Enable</button>":"<button class=\"danger-button compact\" data-user-disable=\""+escapeHtml(u.email)+"\">Disable</button>");
+    return "<tr><td>"+escapeHtml(u.name)+"</td><td>"+escapeHtml(u.email)+"</td><td>"+escapeHtml(u.role)+"</td><td>"+escapeHtml(u.status)+"</td><td>"+action+"</td></tr>";
+  }).join("")||'<tr><td colspan="5" class="empty-state">No team accounts.</td></tr>';
+}
+$("teamRows").addEventListener("click",async event=>{
+  const disable=event.target.closest("[data-user-disable]")?.dataset.userDisable;
+  const enable=event.target.closest("[data-user-enable]")?.dataset.userEnable;
+  const email=disable||enable;if(!email)return;
+  const status=disable?"DISABLED":"ACTIVE";
+  if(!confirm((disable?"Disable":"Enable")+" "+email+"?"))return;
+  try{await api("setUserStatus",{email,status});showMessage("teamMessage","Account "+status.toLowerCase()+".",true);await loadTeam();}
+  catch(err){showMessage("teamMessage",err.message);}
 });
