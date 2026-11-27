@@ -231,6 +231,11 @@ $("customerForm").addEventListener("submit", async event => {
       email: $("customerEmail").value.trim(),
       company: $("customerCompany").value.trim(),
       address: $("customerAddress").value.trim(),
+      customer_type: $("customerType").value,
+      internet_provider: $("internetProvider").value.trim(),
+      internet_package: $("internetPackage").value.trim(),
+      whatsapp: $("customerWhatsapp").value.trim(),
+      telegram: $("customerTelegram").value.trim(),
       notes: $("customerNotes").value.trim()
     });
     resetCustomerForm(); showMessage("customerMsg", "Customer saved successfully.", true); await loadCustomers();
