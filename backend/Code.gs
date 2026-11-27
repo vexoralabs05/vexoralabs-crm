@@ -405,7 +405,7 @@ function importVpnSubscription(idToken,payload) {
   const get=(label)=>{const re=new RegExp("^\\s*"+label+"\\s*:\\s*(.*?)\\s*$","im");const m=raw.match(re);return m?m[1].trim():"";};
   const order=get("Order"), customer=get("Customer|Name"), plan=get("Package"), data=get("Data"), expires=get("Expires"), link=get("Usage link");
   if(!order||!plan||!expires||!link) throw new Error("Required fields: Order, Package, Expires and Usage link.");
-  const email=get("Email"), phone=get("Phone"), internetPackage=get("Internet package");
+  const email=get("Email"), phone=get("Phone");
   const dataMatch=data.match(/([0-9]+(?:\\.[0-9]+)?)\\s*(GB|MB|TB)?/i);
   const limit=dataMatch?dataMatch[1]:data, unit=dataMatch?(dataMatch[2]||"GB").toUpperCase():"GB";
   const ss=ensureAllCrmSheets_(), sh=ss.getSheetByName("Subscriptions"), rows=sh.getDataRange().getValues();
