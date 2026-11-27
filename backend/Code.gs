@@ -7,7 +7,7 @@ const CRM = {
   },
   headers: {
     Users: ["user_id","auth_uid","name","email","role","status","created_at","updated_at"],
-    Customers: ["customer_id","customer_code","name","phone","email","address","company","notes","status","created_at","updated_at"],
+    Customers: ["customer_id","customer_code","name","phone","email","address","company","customer_type","internet_provider","internet_package","whatsapp","telegram","notes","status","created_at","updated_at"],
     Products: ["product_id","product_code","name","category","description","cost_price","selling_price","status","created_at","updated_at"],
     Invoices: ["invoice_id","invoice_number","customer_id","invoice_date","due_date","subtotal","discount","tax","total","paid_amount","balance","status","created_at","updated_at"],
     Invoice_Items: ["item_id","invoice_id","product_id","description","quantity","unit_price","discount","line_total"],
@@ -419,7 +419,7 @@ function importVpnSubscription(idToken,payload) {
   else {
     if(!customer) throw new Error("Customer not found. Add a Customer/Name field or create the customer first.");
     const now=new Date().toISOString(); customerId=Utilities.getUuid();
-    ss.getSheetByName("Customers").appendRow([customerId,"CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),customer,phone,email,"","","Imported from VPN order","ACTIVE",now,now]);
+    ss.getSheetByName("Customers").appendRow(CRM.headers.Customers.map((h)=>({customer_id:customerId,customer_code:"CUS-"+Utilities.getUuid().slice(0,8).toUpperCase(),name:customer,phone,email,notes:"Imported from VPN order",status:"ACTIVE",created_at:now,updated_at:now}[h]||"")));
   }
   const record=saveSubscriptionInternal_(ss,{subscription_id:Utilities.getUuid(),customer_id:customerId,plan,data_limit:limit,data_unit:unit,
     internet_package:internetPackage,usage_link:link,order_id:order,expiry_date:expires,start_date:new Date().toISOString().slice(0,10),status:"ACTIVE",notes:"Imported from VPN creation details."},actor.user_id);
