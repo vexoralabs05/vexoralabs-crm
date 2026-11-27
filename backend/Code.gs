@@ -467,6 +467,7 @@ function importVpnSubscription(idToken,payload) {
 function saveSubscriptionInternal_(ss,sub,userId) {
   const sh=ss.getSheetByName("Subscriptions"), values=sh.getDataRange().getValues(), headers=values[0], col=Object.fromEntries(headers.map((h,i)=>[h,i]));
   const now=new Date().toISOString(), id=sub.subscription_id||Utilities.getUuid();
+  if(sub.usage_link&&!/^https:\/\//i.test(String(sub.usage_link))) throw new Error("Usage link must start with https://.");
   const record={subscription_id:id,customer_id:sub.customer_id,product_id:sub.product_id||"",plan:sub.plan||"VPN",internet_package:sub.internet_package||"",
     data_limit:sub.data_limit||"",data_unit:sub.data_unit||"GB",usage_link:sub.usage_link||"",order_id:sub.order_id||"",
     start_date:sub.start_date||now.slice(0,10),expiry_date:sub.expiry_date||"",price:Number(sub.price||0),status:sub.status||"ACTIVE",
@@ -517,13 +518,19 @@ function setUserStatus(idToken,payload) {
   const email=String(payload.email||"").toLowerCase(), status=String(payload.status||"").toUpperCase();
   if(!email||!["ACTIVE","DISABLED"].includes(status)) throw new Error("Invalid team account update.");
   if(Object.keys(CRM.admins).some(x=>x===email)) throw new Error("CEO accounts cannot be disabled from this screen.");
-  const sh=ensureAllCrmSheets_().getSheetByName("Users"),v=sh.getDataRange().getValues(),h=v[0],c=Object.fromEntries(h.map((x,i)=>[x,i]));
-  const idx=v.findIndex((r,i)=>i>0&&String(r[c.email]).toLowerCase()===email);
-  if(idx<1) throw new Error("Team member not found.");
-  if(String(v[idx][c.role]).toUpperCase()==="ADMIN"&&status==="DISABLED") { /* one Admin slot becomes available */ }
-  sh.getRange(idx+1,c.status+1).setValue(status);sh.getRange(idx+1,c.updated_at+1).setValue(new Date().toISOString());
-  logActivity_(actor.user_id,"UPDATE","User",v[idx][c.user_id],email+" -> "+status);
-  return {email,status};
+  const lock=LockService.getScriptLock();lock.waitLock(20000);
+  try {
+    const sh=ensureAllCrmSheets_().getSheetByName("Users"),v=sh.getDataRange().getValues(),h=v[0],c=Object.fromEntries(h.map((x,i)=>[x,i]));
+    const idx=v.findIndex((r,i)=>i>0&&String(r[c.email]).toLowerCase()===email);
+    if(idx<1) throw new Error("Team member not found.");
+    const targetRole=String(v[idx][c.role]).toUpperCase();
+    if(status==="ACTIVE"&&targetRole==="ADMIN"&&v.slice(1).some((r,i)=>i+1!==idx&&String(r[c.role]).toUpperCase()==="ADMIN"&&String(r[c.status]).toUpperCase()!=="DISABLED")) {
+      throw new Error("Another active Admin already exists. Only one active Admin is allowed.");
+    }
+    sh.getRange(idx+1,c.status+1).setValue(status);sh.getRange(idx+1,c.updated_at+1).setValue(new Date().toISOString());
+    logActivity_(actor.user_id,"UPDATE","User",v[idx][c.user_id],email+" -> "+status);
+    return {email,status};
+  } finally {lock.releaseLock();}
 }
 
 function createWorkbookBackup(idToken) {
