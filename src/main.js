@@ -400,3 +400,11 @@ $("teamRows").addEventListener("click",async event=>{
   try{await api("setUserStatus",{email,status});showMessage("teamMessage","Account "+status.toLowerCase()+".",true);await loadTeam();}
   catch(err){showMessage("teamMessage",err.message);}
 });
+
+$("createBackup").addEventListener("click",async()=>{
+  const btn=$("createBackup");if(!confirm("Create a snapshot backup of all CRM data tabs inside the same Google Spreadsheet?"))return;
+  btn.disabled=true;btn.textContent="Creating backup…";
+  try{const result=await api("createWorkbookBackup");showMessage("teamMessage","Backup "+result.backup_id+" created: "+result.sheets+" sheet snapshots.",true);}
+  catch(err){showMessage("teamMessage",err.message);}
+  finally{btn.disabled=false;btn.textContent="Create Google Sheets backup";}
+});
