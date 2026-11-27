@@ -59,7 +59,7 @@
             <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
             <button class="nav-item" data-view="posView" id="posNav"><span>▣</span> New Sale</button>
             <button class="nav-item" data-view="servicesView" id="servicesNav"><span>◇</span> Services</button>
-            <button class="nav-item" data-view="salesView" id="salesNav"><span>▤</span> Sales & Invoices</button>
+            <button class="nav-item" data-view="salesView" id="salesNav"><span>▤</span> Sales & Invoices</button>\n            <button class="nav-item" data-view="subscriptionsView" id="subscriptionsNav"><span>∞</span> VPN & Subscriptions</button>\n            <button class="nav-item" data-view="expensesView" id="expensesNav"><span>◈</span> Expenses & Finance</button>
             <button class="nav-item" data-view="customersView" id="customersNav"><span>♙</span> Customers</button>
             <button class="nav-item" data-view="teamView" id="teamNav" hidden><span>♧</span> Team access</button>
           </nav>
@@ -82,7 +82,7 @@
                 <div><label for="customerEmail">Email</label><input id="customerEmail" type="email" maxlength="160"></div>
                 <div><label for="customerCompany">Company</label><input id="customerCompany" maxlength="120"></div>
                 <div class="wide"><label for="customerAddress">Address</label><input id="customerAddress" maxlength="300"></div>
-                <div class="wide"><label for="customerNotes">Notes</label><textarea id="customerNotes" rows="2" maxlength="1000"></textarea></div>
+                <div><label for="customerType">Customer type</label><select id="customerType"><option value="INDIVIDUAL">Individual</option><option value="BUSINESS">Business</option><option value="RESELLER">Reseller</option></select></div>\n                <div><label for="internetProvider">Internet provider</label><input id="internetProvider" placeholder="Dialog / Hutch / SLT / Mobitel"></div>\n                <div><label for="internetPackage">Internet package</label><input id="internetPackage" placeholder="Hutch Zoom 224 / Unlimited"></div>\n                <div><label for="customerWhatsapp">WhatsApp number</label><input id="customerWhatsapp"></div>\n                <div><label for="customerTelegram">Telegram username</label><input id="customerTelegram"></div>\n                <div class="wide"><label for="customerNotes">Notes</label><textarea id="customerNotes" rows="2" maxlength="1000"></textarea></div>
               </div><div class="form-actions"><button class="primary-button small-button" type="submit">Save customer</button><button class="secondary-button" type="button" id="cancelCustomer">Cancel</button></div></form>
               <p id="customerMsg" class="message" role="status"></p><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Company</th><th>Actions</th></tr></thead><tbody id="customers"></tbody></table></div>
             </section>
@@ -100,7 +100,64 @@
             <section class="content-card"><form id="serviceForm" class="customer-form" hidden><input id="serviceId" type="hidden"><div class="form-grid"><div><label for="serviceName">Service / plan name *</label><input id="serviceName" required maxlength="120"></div><div><label for="serviceCategory">Category</label><select id="serviceCategory"><option>VPN</option><option>IPTV</option><option>Web Development</option><option>Software</option><option>Other Digital Service</option></select></div><div><label for="servicePrice">Selling price (LKR) *</label><input id="servicePrice" type="number" min="0" step="0.01" required></div><div><label for="serviceCost">Cost price (LKR)</label><input id="serviceCost" type="number" min="0" step="0.01" value="0"></div><div class="wide"><label for="serviceDescription">Description</label><textarea id="serviceDescription" rows="2"></textarea></div></div><div class="form-actions"><button class="primary-button small-button" type="submit">Save service</button><button class="secondary-button" type="button" id="cancelService">Cancel</button></div></form><p id="serviceMessage" class="message" role="status"></p><div id="serviceList" class="service-list"></div></section>
           </section>
           <section id="salesView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">TRANSACTION HISTORY</p><h2>Sales & invoices</h2><p class="muted">Recent invoices created through Vexora POS.</p></div><button class="secondary-button" id="refreshSales">↻ Refresh</button></div><section class="content-card"><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody id="salesRows"><tr><td colspan="6" class="empty-state">Loading sales…</td></tr></tbody></table></div></section></section>
-          <section id="teamView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">ACCESS CONTROL</p><h2>Team access</h2><p class="muted">Create staff accounts and assign workspace roles.</p></div></div>
+
+          <section id="subscriptionsView" class="view-panel" hidden>
+            <div class="page-intro"><div><p class="eyebrow">VPN CUSTOMER OPERATIONS</p><h2>VPN & subscriptions</h2><p class="muted">Track orders, data limits, internet packages, expiry dates and usage links.</p></div><button class="primary-button small-button" id="newSubscription">+ Add subscription</button></div>
+            <section class="content-card">
+              <div class="section-heading"><div><h3>Quick VPN import</h3><p class="muted">Paste the VPN creation message and let the system map the fields.</p></div></div>
+              <textarea id="vpnImportText" rows="7" placeholder="Order: U7EDAD — Niroshan&#10;Package: HUTCH ZOOM 224/494/794&#10;Data: 100 GB&#10;Expires: 18 Dec 2026&#10;Usage link: https://example.com/subscription/..." ></textarea>
+              <div class="form-actions"><button class="primary-button small-button" id="importVpn">Import VPN details</button><button class="secondary-button" id="clearVpnImport" type="button">Clear</button></div>
+              <p id="vpnImportMessage" class="message" role="status"></p>
+            </section>
+            <section class="content-card">
+              <form id="subscriptionForm" class="customer-form" hidden>
+                <input id="subscriptionId" type="hidden">
+                <div class="form-grid">
+                  <div><label for="subscriptionCustomer">Customer *</label><select id="subscriptionCustomer" required></select></div>
+                  <div><label for="subscriptionPlan">Plan / product *</label><input id="subscriptionPlan" required placeholder="VPN 100GB"></div>
+                  <div><label for="subscriptionOrder">Order ID</label><input id="subscriptionOrder"></div>
+                  <div><label for="subscriptionData">Data allowance</label><input id="subscriptionData" placeholder="100"></div>
+                  <div><label for="subscriptionUnit">Data unit</label><select id="subscriptionUnit"><option>GB</option><option>MB</option><option>TB</option><option>Unlimited</option></select></div>
+                  <div><label for="subscriptionInternet">Internet package</label><input id="subscriptionInternet" placeholder="Hutch Zoom 224"></div>
+                  <div><label for="subscriptionStart">Start date</label><input id="subscriptionStart" type="date"></div>
+                  <div><label for="subscriptionExpiry">Expiry date *</label><input id="subscriptionExpiry" type="date" required></div>
+                  <div><label for="subscriptionPrice">Selling price (LKR)</label><input id="subscriptionPrice" type="number" min="0" step="0.01" value="0"></div>
+                  <div><label for="subscriptionStatus">Status</label><select id="subscriptionStatus"><option>ACTIVE</option><option>EXPIRED</option><option>SUSPENDED</option><option>CANCELLED</option></select></div>
+                  <div class="wide"><label for="subscriptionUsage">Usage link</label><input id="subscriptionUsage" type="url" placeholder="https://..."></div>
+                  <div class="wide"><label for="subscriptionNotes">Notes</label><textarea id="subscriptionNotes" rows="2"></textarea></div>
+                </div>
+                <div class="form-actions"><button class="primary-button small-button" type="submit">Save subscription</button><button class="secondary-button" id="cancelSubscription" type="button">Cancel</button></div>
+              </form>
+              <div class="directory-toolbar"><div><h3>Subscription register</h3><p class="muted" id="subscriptionCount">Loading subscriptions…</p></div><input id="subscriptionSearch" class="search-input" type="search" placeholder="Search customer, order or plan…"></div>
+              <p id="subscriptionMessage" class="message" role="status"></p>
+              <div class="table-wrap"><table><thead><tr><th>Customer / Order</th><th>Plan</th><th>Data</th><th>Internet package</th><th>Expires</th><th>Status</th><th>Usage</th><th>Actions</th></tr></thead><tbody id="subscriptionRows"></tbody></table></div>
+            </section>
+          </section>
+          <section id="expensesView" class="view-panel" hidden>
+            <div class="page-intro"><div><p class="eyebrow">FINANCE & CASH FLOW</p><h2>Expenses & finance</h2><p class="muted">Monthly revenue, collections, expenses, receivables and net result.</p></div><button class="primary-button small-button" id="newExpense">+ Record expense</button></div>
+            <section class="content-card">
+              <div class="directory-toolbar"><div><h3>Monthly performance</h3><p class="muted">Based on invoices and recorded expenses.</p></div><input id="financeMonth" type="month" class="search-input"></div>
+              <div id="financeStats" class="stats-grid"></div>
+            </section>
+            <section class="content-card">
+              <form id="expenseForm" class="customer-form" hidden>
+                <div class="form-grid">
+                  <div><label for="expenseCategory">Category *</label><select id="expenseCategory"><option>Server / Hosting</option><option>Internet</option><option>Software / Subscription</option><option>Marketing</option><option>Transport</option><option>Clothing Stock</option><option>Other</option></select></div>
+                  <div><label for="expenseAmount">Amount (LKR) *</label><input id="expenseAmount" type="number" min="0.01" step="0.01" required></div>
+                  <div><label for="expenseDate">Expense date *</label><input id="expenseDate" type="date" required></div>
+                  <div><label for="expenseMethod">Payment method</label><select id="expenseMethod"><option>CASH</option><option>BANK_TRANSFER</option><option>CARD</option><option>ONLINE</option></select></div>
+                  <div><label for="expenseVendor">Vendor</label><input id="expenseVendor"></div>
+                  <div><label for="expenseReference">Reference</label><input id="expenseReference"></div>
+                  <div class="wide"><label for="expenseDescription">Description</label><textarea id="expenseDescription" rows="2"></textarea></div>
+                </div>
+                <div class="form-actions"><button class="primary-button small-button" type="submit">Save expense</button><button class="secondary-button" id="cancelExpense" type="button">Cancel</button></div>
+              </form>
+              <p id="expenseMessage" class="message" role="status"></p>
+              <div class="directory-toolbar"><h3>Expense history</h3><span id="expenseCount" class="muted"></span></div>
+              <div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description / Vendor</th><th>Method</th><th>Amount</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
+            </section>
+          </section>
+\n          <section id="teamView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">ACCESS CONTROL</p><h2>Team access</h2><p class="muted">Create staff accounts and assign workspace roles.</p></div></div>
             <section class="content-card" id="staffCard"><div class="section-heading"><div><h3>Create a team account</h3><p class="muted">A verification email will be sent to the new member.</p></div></div><form id="staffForm"><div class="form-grid">
               <div><label for="staffName">Staff name</label><input id="staffName" required></div><div><label for="staffEmail">Staff email</label><input id="staffEmail" type="email" required></div>
               <div><label for="staffPassword">Temporary password (12+ characters)</label><input id="staffPassword" type="password" minlength="12" required></div>
