@@ -69,6 +69,7 @@ function crmBridge(action, idToken, payload) {
     case "getFinanceData": return getFinanceData(String(idToken || ""), payload);
     case "getTeam": return getTeam(String(idToken || ""));
     case "setUserStatus": return setUserStatus(String(idToken || ""), payload);
+    case "createWorkbookBackup": return createWorkbookBackup(String(idToken || ""));
     default: throw new Error("Unknown CRM action.");
   }
 }
@@ -100,6 +101,7 @@ function doPost(e) {
       case "getFinanceData": data = getFinanceData(token, payload); break;
       case "getTeam": data = getTeam(token); break;
       case "setUserStatus": data = setUserStatus(token, payload); break;
+      case "createWorkbookBackup": data = createWorkbookBackup(token); break;
       default: throw new Error("Unknown CRM action.");
     }
     return jsonOutput_({ok:true,data:data === undefined ? null : data});
@@ -522,4 +524,20 @@ function setUserStatus(idToken,payload) {
   sh.getRange(idx+1,c.status+1).setValue(status);sh.getRange(idx+1,c.updated_at+1).setValue(new Date().toISOString());
   logActivity_(actor.user_id,"UPDATE","User",v[idx][c.user_id],email+" -> "+status);
   return {email,status};
+}
+
+function createWorkbookBackup(idToken) {
+  const actor=requireRole_(idToken,["SUPER_ADMIN"]);
+  const ss=ensureAllCrmSheets_();
+  const stamp=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMdd_HHmmss");
+  const sourceSheets=ss.getSheets().filter(sh=>!/^BKP_/.test(sh.getName()));
+  const created=[];
+  sourceSheets.forEach(source=>{
+    const copy=source.copyTo(ss);
+    const safe=source.getName().replace(/[^A-Za-z0-9_]/g,"_").slice(0,35);
+    copy.setName(("BKP_"+stamp+"_"+safe).slice(0,99));
+    created.push(copy.getName());
+  });
+  logActivity_(actor.user_id,"BACKUP","Workbook",stamp,"Created "+created.length+" sheet snapshots.");
+  return {backup_id:stamp,sheets:created.length,names:created};
 }
