@@ -491,7 +491,8 @@ function saveExpense(idToken,expense) {
   const record={expense_id:id,category:String(expense.category).trim(),description:String(expense.description||"").trim(),amount,
     payment_method:String(expense.payment_method||"CASH").toUpperCase(),expense_date:date,reference:String(expense.reference||"").trim(),
     vendor:String(expense.vendor||"").trim(),receipt_url:String(expense.receipt_url||"").trim(),created_at:now};
-  sh.appendRow(CRM.headers.Expenses.map(h=>record[h]??""));
+  const expenseHeaders=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  sh.appendRow(expenseHeaders.map(h=>record[h]??""));
   appendMonthlyRecord_("Expenses",new Date(date+"T12:00:00"),["expense_id","category","description","amount","payment_method","expense_date","reference","vendor","receipt_url","created_by","created_at"],
     [id,record.category,record.description,amount,record.payment_method,date,record.reference,record.vendor,record.receipt_url,actor.user_id,now]);
   logActivity_(actor.user_id,"CREATE","Expense",id,record.category+" / LKR "+amount);
