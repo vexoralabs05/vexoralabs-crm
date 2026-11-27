@@ -59,7 +59,9 @@
             <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
             <button class="nav-item" data-view="posView" id="posNav"><span>▣</span> New Sale</button>
             <button class="nav-item" data-view="servicesView" id="servicesNav"><span>◇</span> Services</button>
-            <button class="nav-item" data-view="salesView" id="salesNav"><span>▤</span> Sales & Invoices</button>\n            <button class="nav-item" data-view="subscriptionsView" id="subscriptionsNav"><span>∞</span> VPN & Subscriptions</button>\n            <button class="nav-item" data-view="expensesView" id="expensesNav"><span>◈</span> Expenses & Finance</button>
+            <button class="nav-item" data-view="salesView" id="salesNav"><span>▤</span> Sales & Invoices</button>
+            <button class="nav-item" data-view="subscriptionsView" id="subscriptionsNav"><span>∞</span> VPN & Subscriptions</button>
+            <button class="nav-item" data-view="expensesView" id="expensesNav"><span>◈</span> Expenses & Finance</button>
             <button class="nav-item" data-view="customersView" id="customersNav"><span>♙</span> Customers</button>
             <button class="nav-item" data-view="teamView" id="teamNav" hidden><span>♧</span> Team access</button>
           </nav>
@@ -82,7 +84,12 @@
                 <div><label for="customerEmail">Email</label><input id="customerEmail" type="email" maxlength="160"></div>
                 <div><label for="customerCompany">Company</label><input id="customerCompany" maxlength="120"></div>
                 <div class="wide"><label for="customerAddress">Address</label><input id="customerAddress" maxlength="300"></div>
-                <div><label for="customerType">Customer type</label><select id="customerType"><option value="INDIVIDUAL">Individual</option><option value="BUSINESS">Business</option><option value="RESELLER">Reseller</option></select></div>\n                <div><label for="internetProvider">Internet provider</label><input id="internetProvider" placeholder="Dialog / Hutch / SLT / Mobitel"></div>\n                <div><label for="internetPackage">Internet package</label><input id="internetPackage" placeholder="Hutch Zoom 224 / Unlimited"></div>\n                <div><label for="customerWhatsapp">WhatsApp number</label><input id="customerWhatsapp"></div>\n                <div><label for="customerTelegram">Telegram username</label><input id="customerTelegram"></div>\n                <div class="wide"><label for="customerNotes">Notes</label><textarea id="customerNotes" rows="2" maxlength="1000"></textarea></div>
+                <div><label for="customerType">Customer type</label><select id="customerType"><option value="INDIVIDUAL">Individual</option><option value="BUSINESS">Business</option><option value="RESELLER">Reseller</option></select></div>
+                <div><label for="internetProvider">Internet provider</label><input id="internetProvider" placeholder="Dialog / Hutch / SLT / Mobitel"></div>
+                <div><label for="internetPackage">Internet package</label><input id="internetPackage" placeholder="Hutch Zoom 224 / Unlimited"></div>
+                <div><label for="customerWhatsapp">WhatsApp number</label><input id="customerWhatsapp"></div>
+                <div><label for="customerTelegram">Telegram username</label><input id="customerTelegram"></div>
+                <div class="wide"><label for="customerNotes">Notes</label><textarea id="customerNotes" rows="2" maxlength="1000"></textarea></div>
               </div><div class="form-actions"><button class="primary-button small-button" type="submit">Save customer</button><button class="secondary-button" type="button" id="cancelCustomer">Cancel</button></div></form>
               <p id="customerMsg" class="message" role="status"></p><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Company</th><th>Actions</th></tr></thead><tbody id="customers"></tbody></table></div>
             </section>
@@ -157,7 +164,8 @@
               <div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description / Vendor</th><th>Method</th><th>Amount</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
             </section>
           </section>
-\n          <section id="teamView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">ACCESS CONTROL</p><h2>Team access</h2><p class="muted">Create staff accounts and assign workspace roles.</p></div></div>
+
+          <section id="teamView" class="view-panel" hidden><div class="page-intro"><div><p class="eyebrow">ACCESS CONTROL</p><h2>Team access</h2><p class="muted">Create staff accounts and assign workspace roles.</p></div></div>
             <section class="content-card" id="staffCard"><div class="section-heading"><div><h3>Create a team account</h3><p class="muted">A verification email will be sent to the new member.</p></div></div><form id="staffForm"><div class="form-grid">
               <div><label for="staffName">Staff name</label><input id="staffName" required></div><div><label for="staffEmail">Staff email</label><input id="staffEmail" type="email" required></div>
               <div><label for="staffPassword">Temporary password (12+ characters)</label><input id="staffPassword" type="password" minlength="12" required></div>
