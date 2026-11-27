@@ -1,45 +1,72 @@
 # VEXORA Pro OS
 
-A clean rebuild of the VEXORA CRM as a premium, responsive business control center.
+Google Apps Script hosted business management system with Google Sheets as its central database.
 
-## Current build
+## Files to add to the Apps Script project
 
-- Dashboard with revenue, collections, expenses, net cash, monthly charts, division mix and upcoming VPN expiry alerts.
-- Customer CRM with customer type, phone, email, company, internet provider/package, Telegram, address and notes.
-- VPN subscription register with Order ID, customer, plan, quota, ISP package, start/expiry, price, status and usage URL.
-- VPN paste importer for the format `Order: U7EDAD — Niroshan`, `Package: HUTCH ZOOM 224/494/794`, `Data: 100 GB`, `Expires: 18 Dec 2026`, `Usage link: https://...`.
-- Product/service catalogue seeded with the VEXORA VPN plans, LK IP add-on and Canva Access.
-- POS sales with multiple line items, discount, invoice number, payment collection, outstanding balance and printable invoice.
-- Expense records by date, category, division, vendor and payment method.
-- Finance overview, cashflow, receivables, division breakdown and analytics.
-- Activity log, CSV exports, JSON backup/restore and business settings.
-- Responsive desktop and mobile layout.
+Create a new project at https://script.google.com and add these files using the exact names:
+- `Code.gs`
+- `Index.html`
+- `Stylesheet.html`
+- `JavaScript.html`
 
-## Login
+Copy each matching file from this repository. The `backend/Code.gs` file is a legacy schema-only reference; the root `Code.gs` is the active backend.
 
-There is deliberately **no login screen or login credentials** in this build. Authentication can be added as a final phase as requested.
+## First-time deployment
 
-## Data storage status
+1. Open **Project Settings → Script Properties** in Apps Script.
+2. Add `VEXORA_SETUP_KEY` with a long, random, one-time setup secret. Do not share it.
+3. In **Project Settings → Time zone**, select the business time zone.
+4. Deploy → **New deployment** → **Web app**.
+5. Execute as: **Me** (the spreadsheet owner).
+6. Set access to the audience who will use the CRM. The app has its own username/password authentication; the deployment owner must keep the spreadsheet private.
+7. Open the web app URL. The first-time setup screen requires the setup key and lets you create the first CEO account.
+8. Sign in, then use Settings → Account management to create the second CEO and the single Admin account.
 
-The current browser build is fully usable in the browser and saves records in that browser's local storage. This is useful for testing the CRM workflows, but it is not yet a shared multi-user cloud database. Export a JSON backup regularly.
+The first CEO setup key is checked on the server and is not stored in the Users sheet. Once the first CEO is created, bootstrap is permanently disabled.
 
-The `backend/Code.gs` file contains the Google Sheets schema bootstrap. It creates the canonical Sheets tabs but deliberately does not expose a public write API. Do not deploy a publicly accessible Apps Script endpoint that can read/write customer data before authentication and authorization are added.
+## Database structure
 
-## Google Sheets setup (schema only)
+The script automatically creates a private Google Spreadsheet and stores its ID in Script Properties. It creates these tabs:
+- `Users`: user ID, username, salted password hash, salt, role, status, timestamps. **Plaintext passwords are never stored.**
+- `Customers`
+- `Subscriptions`
+- `Products`
+- `Sales`
+- `Expenses`
+- `Activity_Logs`
+- `Workspace`: settings and synchronization revision
 
-1. Create a private Google Spreadsheet.
-2. Copy its ID into `VEXORA_OS.SPREADSHEET_ID` in `backend/Code.gs`.
-3. Open Extensions → Apps Script and paste the file.
-4. Run `setupVexoraProOS()` once and authorize it.
-5. Keep the spreadsheet private. Cloud synchronization will be enabled in a later authenticated phase.
+CRM records are stored in their respective tabs as JSON rows, so the original record fields remain intact while the app schema can evolve.
 
-## Run / publish
+## Live synchronization
 
-The frontend is static HTML/CSS/JS and can be served locally or published with GitHub Pages from the repository root. No build step or package manager is required.
+- Every CRM save writes the current records to Google Sheets.
+- Each signed-in browser checks for a newer cloud revision every 5 seconds.
+- Manual sync is available from the top bar.
+- A stale save is rejected and the client reloads the latest cloud version rather than silently overwriting newer data.
+- All server-side read/write functions validate the session token.
 
-## Important
+## Authentication and roles
 
-- No files from the old CRM UI are reused.
-- No authentication credentials or passwords are embedded.
-- Customer and subscription data is currently local to the browser.
-- Google Sheets sync and multi-user permissions are intentionally deferred until the final login/security phase.
+- First account: CEO.
+- Maximum two active CEO accounts.
+- Maximum one active Admin account.
+- Only a CEO can create accounts.
+- Passwords require at least 12 characters and are salted + iteratively SHA-256 hashed.
+- Sessions expire after six hours.
+- Sign out invalidates the current session.
+
+## Important security notes
+
+- Keep the spreadsheet shared only with trusted owners. Do not publish the database spreadsheet.
+- Deploy the web app as **Execute as Me** so users do not need direct spreadsheet access.
+- Protect the Apps Script project and its Script Properties.
+- Use a unique setup key and strong, unique passwords.
+- Google Apps Script is suitable for this CRM's initial deployment, but it has quotas and execution limits. For high-volume multi-user use, move to a dedicated database and stronger identity provider.
+- Live sync uses polling (5 seconds), not instantaneous push notifications.
+- Make a spreadsheet backup before major changes.
+
+## Local development files
+
+The original static files under `assets/` are retained for reference. The Apps Script deployment uses the root HTML templates above.
