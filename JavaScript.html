@@ -1,3 +1,4 @@
+<script>
 const DB_KEY="vexora_pro_os_v1";
 const $=id=>document.getElementById(id);
 const money=n=>new Intl.NumberFormat("en-LK",{style:"currency",currency:state.settings.currency||"LKR",maximumFractionDigits:0}).format(Number(n)||0).replace("LKR","Rs.");
@@ -20,7 +21,7 @@ const seed=()=>({settings:{businessName:"VEXORA LABS",currency:"LKR",businessEma
 ],sales:[],expenses:[],activity:[]});
 let state=loadState(),cart=[];
 function loadState(){try{const d=JSON.parse(localStorage.getItem(DB_KEY));return d&&d.customers?{...seed(),...d,settings:{...seed().settings,...d.settings}}:seed()}catch(e){return seed()}}
-function save(){renderAll();if(window.VEXORA_AUTH?.token){google.script.run.withFailureHandler(e=>toast("Cloud save failed: "+(e.message||e))).withSuccessHandler(r=>{window.VEXORA_REV=r.revision;setSyncStatus("Synced")}).apiSaveState(window.VEXORA_AUTH.token,state)}else{localStorage.setItem(DB_KEY,JSON.stringify(state))}}
+function save(){renderAll();if(window.VEXORA_AUTH?.token){google.script.run.withFailureHandler(e=>{if(String(e.message||e).includes("SYNC_CONFLICT"))pullCloud(false);else toast("Cloud save failed: "+(e.message||e))}).withSuccessHandler(r=>{window.VEXORA_REV=r.revision;setSyncStatus("Synced")}).apiSaveState(window.VEXORA_AUTH.token,state,window.VEXORA_REV||"0")}else{localStorage.setItem(DB_KEY,JSON.stringify(state))}}
 function log(action,module,detail){state.activity.unshift({id:uid("LOG"),at:new Date().toISOString(),action,module,detail});state.activity=state.activity.slice(0,500)}
 function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2400)}
 function emptyRow(cols,msg="No records yet. Add your first record to get started."){return '<tr><td colspan="'+cols+'" class="empty">'+safe(msg)+'</td></tr>'}
@@ -84,3 +85,4 @@ $("syncNow").onclick=()=>pullCloud(true);$("logoutBtn").onclick=async()=>{try{aw
 async function pullCloud(manual=false){if(!window.VEXORA_AUTH?.token)return;try{const r=await authCall("getWorkspace",window.VEXORA_AUTH.token);if(r.revision!==window.VEXORA_REV){state={...seed(),...r.data,settings:{...seed().settings,...(r.data.settings||{})}};window.VEXORA_REV=r.revision;renderAll();setSyncStatus("Cloud changes received")}else if(manual)setSyncStatus("Already up to date")}catch(e){setSyncStatus("Sync error");if(manual)toast(e.message||String(e))}}
 function startLiveSync(){setInterval(()=>pullCloud(false),5000);}
 startAuth();
+</script>
